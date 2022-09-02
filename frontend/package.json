@@ -1,0 +1,29 @@
+{
+  "name": "web",
+  "version": "0.1.31",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build --modern"
+  },
+  "dependencies": {
+    "@ant-design/icons-vue": "^6.0.1",
+    "ali-oss": "^6.16.0",
+    "ant-design-vue": "^2.2.8",
+    "codemirror": "^5.64.0",
+    "core-js": "^3.6.5",
+    "socket.io-client": "^4.3.2",
+    "uuid": "^8.3.2",
+    "vue": "^3.0.0",
+    "vuex": "^4.0.0-0",
+    "whatwg-fetch": "^3.6.2"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "~4.5.0",
+    "@vue/cli-plugin-vuex": "~4.5.0",
+    "@vue/cli-service": "~4.5.0",
+    "@vue/compiler-sfc": "^3.0.0",
+    "less": "^3.0.4",
+    "less-loader": "^5.0.0"
+  }
+}

@@ -1,0 +1,1 @@
+export const EVENT_MODEL_PUBLISH = 'event.model.save'

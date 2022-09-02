@@ -1,0 +1,100 @@
+.param-panel {
+  height: 100%;
+  padding: 16px 10px;
+  overflow-y: auto;
+}
+
+.param-panel-title {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.param-panel-uuid {
+  color: #86909C;
+  font-size: 12px;
+}
+
+.param-panel-form-group {
+  margin-bottom: 24px;
+  position: relative;
+  color: #1D2129;
+  .param-panel-form-horizontal {
+    display: flex;
+    // align-items: center;
+    justify-content: flex-start;
+  }
+  .param-panel-form-label {
+    display: block;
+    font-size: 14px;
+    color: #86909C;
+    margin-bottom: 5px;
+  }
+  .param-panel-group-inner {
+    position: relative;
+  }
+}
+
+.param-validate-tip {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  min-height: 24px;
+  color: #ff4d4f;
+  line-height: 1.5;
+  font-size: 12px;
+}
+
+.file-uploader-wrap {
+  .ant-input-group-addon {
+    padding: 0;
+  }
+  .ant-btn {
+    height: 29px;
+    padding: 2px 15px;
+  }
+}
+
+.param-panel-multi {
+  margin-bottom: 24px;
+  .param-panel-multi-row {
+    margin-bottom: 12px;
+  }
+  .param-panel-multi-label {
+    display: block;
+    margin-bottom: 5px;
+  }
+  .param-panel-multi-content {
+    display: block;
+    margin-bottom: 5px;
+  }
+}
+
+.param-python-input {
+  border: 1px solid rgb(217, 217, 217);
+}
+
+.ml-param-ports {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  .ml-param-port {
+    display: inline-block;
+    text-align: center;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    padding: 2px 8px;
+    height: 30px;
+    border: 1px solid rgb(217, 217, 217);
+    cursor: pointer;
+    .deletable {
+      font-size: 12px;
+      margin-left: 5px;
+    }
+    .iconfont {
+      &:hover {
+        color: #40a9ff;
+      }
+    }
+  }
+}

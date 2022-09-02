@@ -1,0 +1,47 @@
+.ml-collapse {
+  min-height: 300px;
+  overflow: hidden;
+  height: 100%;
+}
+
+.ml-collapse-panel {
+
+}
+
+.ml-collapse-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  // background: #aaa;
+  border-top: 1px solid  #F2F3F5;;
+  border-bottom: 1px solid #F2F3F5;;
+  .ml-collapse-panel-header-icon {
+    transition: transform 0.25s;
+  }
+  .ml-collapse-panel-header-label {
+    font-size: 14px;
+    font-weight: bold;
+    color: #1D2129;
+  }
+}
+
+.ml-collapse-panel-resize {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 4px;
+  cursor: n-resize;
+  &:hover {
+    background: #0084ff;
+  }
+}
+
+.ml-collapse-panel-content {
+  position: relative;
+  // background: lightcyan;
+  // transition: height 0.25s;
+}

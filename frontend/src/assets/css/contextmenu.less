@@ -1,0 +1,63 @@
+.graph-contextmenu {
+  position: absolute;
+  z-index: 9999;
+  left: 100px;
+  top: 100px;
+  user-select: none
+}
+.graph-contextmenu-list {
+  list-style: none;
+  font-size: 14px;
+  color: #323232;
+  min-width: 120px;
+  width: 100%;
+  border: 1px solid #d3d3d3;
+  background: #fafafa;
+  padding: 10px 0;
+  box-shadow: 3px 3px 3px 0 rgba(0, 0, 0, 0.5);
+  &.submenu {
+    position: absolute;
+    left: 100%;
+    top: -8px;
+    min-width: 200px;
+  }
+}
+.graph-contextmenu-item {
+  position: relative;
+  &.disabled {
+    color: #666;
+    opacity: 0.5;
+  }
+  &:hover:not(.disabled) {
+    background-color: #e6e6e6;
+  }
+}
+.graph-contextmenu-item-inner {
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.graph-contextmenu-label-wrap {
+  display: flex;
+  align-items: center;
+}
+.graph-contextmenu-label {
+  margin: 0 20px;
+  line-height: 30px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 256px;
+  display: inline-block;
+}
+.graph-contextmenu-divider {
+  width: 100%;
+  margin: 3px 0;
+  height: 1px;
+  background: #e7e3e7;
+}
+.graph-contextmenu-more {
+  position: relative;
+}

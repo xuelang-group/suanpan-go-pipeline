@@ -1,0 +1,36 @@
+ul.ml-tree {
+  list-style: none;
+  padding: 0;
+  user-select: none;
+}
+.ml-tree-item {
+  color: #1D2129;
+  .ml-tree-item-inner {
+    padding: 0 10px;
+    align-items: center;
+    width: 100%;
+    cursor: default;
+    line-height: 32px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    &:hover {
+      background: #f5f5f5;
+    }
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+  }
+}
+.ml-tree-item-placeholder {
+  display: inline-block;
+}
+.ml-tree-item-icon {
+  display: inline-block;
+  width: 16px;
+  .iconfont {
+    color: #4E5969;
+    font-size: 12px;
+  }
+}

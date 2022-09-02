@@ -1,0 +1,61 @@
+.main-layout {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+.main-top {
+  width: 100%;
+  height: 56px;
+}
+.main-layout-left {
+  position: absolute;
+  left: 0;
+  top: 56px;
+  height: calc(100% - 56px);
+  border-right: 1px solid #ccc;
+}
+.main-layout-middle {
+  height: calc(100% - 56px);
+}
+.main-layout-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+}
+.main-layout-right {
+  position: absolute;
+  right: 0;
+  top: 56px;
+  height: calc(100% - 56px);
+  border-left: 1px solid #ccc;
+  border-top: 1px solid #F2F3F5;
+}
+.main-layout-resize {
+  position: absolute;
+  &.dragging, &:hover {
+    background: #0084ff;
+  }
+  &-left {
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: e-resize;
+  }
+  &-right {
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: e-resize;
+  }
+  &-bottom {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    cursor: n-resize;
+  }
+}

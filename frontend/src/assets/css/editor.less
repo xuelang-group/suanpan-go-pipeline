@@ -1,0 +1,167 @@
+.dragging-node {
+  position: absolute;
+  z-index: 999;
+  left: 0;
+  top: 0;
+  .dragging-node-rect {
+    background: #fff;
+    border: 1px solid #b3b3b3;
+    border-radius: 8px;
+  }
+  .dragging-node-icon {
+    position: absolute;
+    color: #519bbd;
+    font-size: 20px;
+    left: 10px;
+    top: 6px;
+  }
+  .dragging-node-label {
+    position: absolute;
+    left: 40px;
+    top: 10px;
+    right: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dragging-node-port {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 1px solid #b3b3b3;
+    border-radius: 50%;
+    background: #fff;
+  }
+}
+
+.ml-editor {
+  height: 100%;
+  position: relative;
+}
+
+.ml-editor-tip {
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  color: #555;
+  .iconfont {
+    font-size: 20px;
+    display: inline-block;
+    animation-name: spinning;
+    animation-iteration-count: infinite;
+    animation-duration: 0.65s;
+    animation-timing-function: linear;
+  }
+}
+
+@keyframes spinning {
+  from {
+    transform: rotate(0);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ml-editor-graph {
+  height: 100%;
+  background: rgb(242, 242, 242);
+}
+
+.ml-graph {
+  user-select: none;
+}
+
+.ml-node-border {
+  stroke: #b3b3b3;
+  stroke-width: 1px;
+  // transition: all ease .25s;
+  &:hover:not(.port-dragging,.selected-entity) {
+    stroke: gray;
+    stroke-width: 2px;
+  }
+  &.selected-entity {
+    stroke: #519bbd;
+    stroke-width: 2px;
+  }
+  &.matching-entity {
+    stroke: #3eaf7c;
+    stroke-width: 2px;
+    stroke-dasharray: 10 5
+  }
+  &.matched-entity {
+    stroke: #3eaf7c;
+    stroke-width: 2px;
+  }
+}
+.ml-graph-icon {
+  // pointer-events: none;
+  font-size: 24px;
+  color: #519bbd;
+  fill: #519bbd;
+}
+
+.ml-graph-status-icon {
+  // pointer-events: none;
+  font-size: 24px;
+  &.success {
+    color: #52c41a;
+    fill: #52c41a;
+  }
+  &.error {
+    color: #ff4d4f;
+    fill: #ff4d4f;
+  }
+}
+
+.ml-graph-label {
+  // pointer-events: none;
+}
+.ml-port-border {
+  stroke: #b3b3b3;
+  stroke-width: 1px;
+  fill: #fff;
+  &.port-matching {
+    fill: #3eaf7c;
+  }
+  &.port-matched.ml-port-in {
+    fill: transparent;
+    stroke-width: 0;
+  }
+  &.port-matched.ml-port-in.port-matching  {
+    fill: transparent;
+    stroke-width: 0;
+  }
+  &.port-matched.ml-port-out {
+    fill: gray;
+  }
+  &.port-matched.ml-port-out.port-matching {
+    fill: #3eaf7c;
+  }
+}
+.ml-port-arrow {
+  fill: gray;
+  pointer-events: none;
+  &.port-matching {
+    fill: #3eaf7c;
+  }
+}
+
+.ml-path {
+  stroke:gray;
+  stroke-width: 2;
+  fill: transparent;
+  &.selected {
+    stroke:#519bbd;
+  }
+}
+.ml-path-hit {
+  stroke:transparent;
+  stroke-width: 10;
+  fill: transparent;
+}
