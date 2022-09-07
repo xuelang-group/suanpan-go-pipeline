@@ -1,17 +1,4 @@
-package main
-
-type NodeAction interface {
-	Run()
-	LoadInput(data Data)
-}
-
-type Node struct {
-	PreviousNode *Node
-	NextNode     *Node
-	InputData    Data
-	OutputData   Data
-	Config       NodeConfig
-}
+package utils
 
 type Data struct {
 	Value string
