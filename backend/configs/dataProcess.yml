@@ -1,0 +1,19 @@
+- type: dataProcess
+  typeLabel: 数据处理
+  category: jsonProcess
+  categoryLabel: Json处理
+  name: 数据提取
+  key: jsonExtractor
+  helpUrl:
+  parameters:
+    - key: field
+      name: 字段名称
+      type: inputString
+      required: True
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1

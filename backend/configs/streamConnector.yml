@@ -1,0 +1,23 @@
+- type: stream
+  typeLabel: 流数据
+  category: inPorts
+  categoryLabel: 输入数据
+  name: 输入1
+  key: in1
+  helpUrl:
+  ports:
+    out:
+      - id: out1
+        name: out1
+
+- type: stream
+  typeLabel: 流数据
+  category: outPorts
+  categoryLabel: 输出数据
+  name: 输出1
+  key: out1
+  helpUrl:
+  ports:
+    in:
+      - id: in1
+        name: in1

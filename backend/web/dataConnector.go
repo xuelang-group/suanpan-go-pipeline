@@ -1,6 +1,7 @@
 package web
 
 import (
+	"goPipeline/graph"
 	"net/http"
 
 	socketio "github.com/googollee/go-socket.io"
@@ -28,32 +29,50 @@ func sendToStream() {
 
 func RunWeb() {
 
+	graph.GraphInst.LoadComponents()
+
 	server.OnConnect("/", func(s socketio.Conn) error {
 		log.Infof("connected: %s", s.ID())
 		return nil
 	})
 
-	server.OnEvent("/", "get.fields", func(s socketio.Conn, msg interface{}) RespondMsg {
+	server.OnEvent("/", "components.get", func(s socketio.Conn, msg interface{}) RespondMsg {
+		return RespondMsg{true, graph.GraphInst.Components}
+	})
+
+	server.OnEvent("/", "graph.update", func(s socketio.Conn, msg []string) RespondMsg {
 		return RespondMsg{true, []string{}}
 	})
 
-	server.OnEvent("/", "set.fields", func(s socketio.Conn, msg []string) RespondMsg {
+	server.OnEvent("/", "graph.get", func(s socketio.Conn, msg interface{}) RespondMsg {
 		return RespondMsg{true, []string{}}
 	})
 
-	server.OnEvent("/", "get.column", func(s socketio.Conn, msg interface{}) RespondMsg {
+	server.OnEvent("/", "process.run", func(s socketio.Conn, msg ColorConfigType) RespondMsg {
 		return RespondMsg{true, []string{}}
 	})
 
-	server.OnEvent("/", "set.config", func(s socketio.Conn, msg ColorConfigType) RespondMsg {
+	server.OnEvent("/", "process.status.get", func(s socketio.Conn, msg interface{}) RespondMsg {
 		return RespondMsg{true, []string{}}
 	})
 
-	server.OnEvent("/", "get.config", func(s socketio.Conn, msg interface{}) RespondMsg {
+	server.OnEvent("/", "graph.status.set", func(s socketio.Conn, msg interface{}) RespondMsg {
 		return RespondMsg{true, []string{}}
 	})
 
-	server.OnEvent("/", "clear.config", func(s socketio.Conn, msg interface{}) RespondMsg {
+	server.OnEvent("/", "graph.status.get", func(s socketio.Conn, msg interface{}) RespondMsg {
+		return RespondMsg{true, []string{}}
+	})
+
+	server.OnEvent("/", "result.visualize.json", func(s socketio.Conn, msg interface{}) RespondMsg {
+		return RespondMsg{true, []string{}}
+	})
+
+	server.OnEvent("/", "result.download", func(s socketio.Conn, msg interface{}) RespondMsg {
+		return RespondMsg{true, []string{}}
+	})
+
+	server.OnEvent("/", "result.visualize", func(s socketio.Conn, msg interface{}) RespondMsg {
 		return RespondMsg{true, []string{}}
 	})
 

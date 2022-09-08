@@ -3,8 +3,10 @@ module goPipeline
 go 1.19
 
 require (
+	github.com/go-gota/gota v0.12.0
 	github.com/googollee/go-socket.io v1.6.2
 	github.com/xuelang-group/suanpan-go-sdk v1.0.5
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -33,4 +35,5 @@ require (
 	golang.org/x/sys v0.0.0-20210806184541-e5e7981a1069 // indirect
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
+	gonum.org/v1/gonum v0.9.1 // indirect
 )
