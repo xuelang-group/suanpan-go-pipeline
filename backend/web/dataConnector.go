@@ -2,6 +2,7 @@ package web
 
 import (
 	"goPipeline/graph"
+	"goPipeline/utils"
 	"net/http"
 
 	socketio "github.com/googollee/go-socket.io"
@@ -40,12 +41,13 @@ func RunWeb() {
 		return RespondMsg{true, graph.GraphInst.Components}
 	})
 
-	server.OnEvent("/", "graph.update", func(s socketio.Conn, msg []string) RespondMsg {
-		return RespondMsg{true, []string{}}
+	server.OnEvent("/", "graph.update", func(s socketio.Conn, msg utils.GraphConfig) RespondMsg {
+		graph.GraphInst.Config = msg
+		return RespondMsg{true, msg}
 	})
 
 	server.OnEvent("/", "graph.get", func(s socketio.Conn, msg interface{}) RespondMsg {
-		return RespondMsg{true, []string{}}
+		return RespondMsg{true, graph.GraphInst.Config}
 	})
 
 	server.OnEvent("/", "process.run", func(s socketio.Conn, msg ColorConfigType) RespondMsg {
