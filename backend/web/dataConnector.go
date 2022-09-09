@@ -11,13 +11,6 @@ import (
 	"github.com/xuelang-group/suanpan-go-sdk/util"
 )
 
-var GraphConfig interface{}
-
-type ColorConfigType struct {
-	Fields       []string          `json:"fields"`
-	ColorMapping map[string]string `json:"colorMapping"`
-}
-
 func sendToStream() {
 
 	id := util.GenerateUUID()
@@ -30,7 +23,7 @@ func sendToStream() {
 
 func RunWeb() {
 
-	graph.GraphInst.LoadComponents()
+	graph.GraphInst.Init()
 
 	server.OnConnect("/", func(s socketio.Conn) error {
 		log.Infof("connected: %s", s.ID())
@@ -42,15 +35,15 @@ func RunWeb() {
 	})
 
 	server.OnEvent("/", "graph.update", func(s socketio.Conn, msg utils.GraphConfig) RespondMsg {
-		graph.GraphInst.Config = msg
-		return RespondMsg{true, msg}
+		graph.GraphInst.Update(msg)
+		return RespondMsg{true, graph.GraphInst.Config}
 	})
 
 	server.OnEvent("/", "graph.get", func(s socketio.Conn, msg interface{}) RespondMsg {
 		return RespondMsg{true, graph.GraphInst.Config}
 	})
 
-	server.OnEvent("/", "process.run", func(s socketio.Conn, msg ColorConfigType) RespondMsg {
+	server.OnEvent("/", "process.run", func(s socketio.Conn, msg interface{}) RespondMsg {
 		return RespondMsg{true, []string{}}
 	})
 

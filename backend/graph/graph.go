@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"goPipeline/components"
 	"goPipeline/utils"
+	"goPipeline/web"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
+	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,16 +24,21 @@ type Graph struct {
 	Config     utils.GraphConfig
 }
 
-func (g Graph) Init() {
+func (g *Graph) Init() {
+	g.graphInit()
+	g.loadComponents()
+}
+
+func (g *Graph) graphInit() {
 	log.Info("Init function not implement.")
 }
 
-func (g Graph) Update() {
-	log.Info("Init function not implement.")
-}
-
-func (g *Graph) Get() {
-	log.Info("Init function not implement.")
+func (g *Graph) Update(newGraph utils.GraphConfig) {
+	g.Config = newGraph
+	os.Remove(web.DataPath)
+	dataJson, _ := json.Marshal(g.Config)
+	os.WriteFile(web.DataPath, dataJson, 0644)
+	storage.FPutObject(web.DataKey, web.DataPath)
 }
 
 func (g Graph) Run() {
@@ -42,7 +49,7 @@ func (g Graph) Stop() {
 	log.Info("Init function not implement.")
 }
 
-func (g *Graph) LoadComponents() {
+func (g *Graph) loadComponents() {
 	files, err := ioutil.ReadDir("configs")
 	if err != nil {
 		log.Error(err.Error())

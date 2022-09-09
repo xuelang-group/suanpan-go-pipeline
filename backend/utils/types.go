@@ -6,29 +6,29 @@ type Data struct {
 }
 
 type GraphConfig struct {
-	htime      uint
-	scale      float32
-	x          float64
-	y          float64
-	Nodes      []NodeConfig
-	Connectors []Connector
+	Htime      uint         `json:"htime"`
+	Scale      float32      `json:"scale"`
+	X          float64      `json:"x"`
+	Y          float64      `json:"y"`
+	Nodes      []NodeConfig `json:"nodes"`
+	Connectors []Connector  `json:"connectors"`
 }
 
 type NodeConfig struct {
-	Uuid       string
-	Puuit      string
-	Type       string
-	Key        string
-	Name       string
-	Status     int
-	x          float64
-	y          float64
-	Parameters []map[string]string
+	Uuid       string              `json:"uuid"`
+	Puuit      string              `json:"puuid"`
+	Type       string              `json:"type"`
+	Key        string              `json:"key"`
+	Name       string              `json:"name"`
+	Status     int                 `json:"status"`
+	X          float64             `json:"x"`
+	Y          float64             `json:"y"`
+	Parameters []map[string]string `json:"parameters"`
 }
 
 type Connector struct {
-	Src map[string]string
-	Tgt map[string]string
+	Src map[string]string `json:"src"`
+	Tgt map[string]string `json:"tgt"`
 }
 
 type NodeInfo struct {
