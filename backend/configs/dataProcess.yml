@@ -3,7 +3,7 @@
   category: jsonProcess
   categoryLabel: Json处理
   name: 数据提取
-  key: jsonExtractor
+  key: JsonExtractor
   helpUrl:
   parameters:
     - key: field

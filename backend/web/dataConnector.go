@@ -11,6 +11,9 @@ import (
 	"github.com/xuelang-group/suanpan-go-sdk/util"
 )
 
+var GraphKey string
+var GraphPath string
+
 func sendToStream() {
 
 	id := util.GenerateUUID()

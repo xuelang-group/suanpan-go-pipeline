@@ -5,6 +5,7 @@
   name: 输入1
   key: in1
   helpUrl:
+  subtype: string
   ports:
     out:
       - id: out1
@@ -17,6 +18,7 @@
   name: 输出1
   key: out1
   helpUrl:
+  subtype: string
   ports:
     in:
       - id: in1
