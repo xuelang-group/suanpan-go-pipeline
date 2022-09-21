@@ -11,17 +11,17 @@ type StreamInNode struct {
 	Node
 }
 
-func (c *StreamInNode) UpdateInput(inputData RequestData) {
-	loadedInputData := c.loadInput(inputData.Data)
-	c.InputData["in1"] = loadedInputData
+func streamInUpdateInput(currentNode Node, inputData RequestData) {
+	loadedInputData := loadInput(currentNode, inputData.Data)
+	currentNode.InputData["in1"] = loadedInputData
 }
 
-func (c *StreamInNode) Main(inputData RequestData) (map[string]interface{}, error) {
-	return c.loadInput(inputData.Data), nil
+func streamInMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	return loadInput(currentNode, inputData.Data), nil
 }
 
-func (c *StreamInNode) loadInput(inputData string) map[string]interface{} {
-	switch c.Config["subtype"] {
+func loadInput(currentNode Node, inputData string) map[string]interface{} {
+	switch currentNode.Config["subtype"] {
 	case "string":
 		return map[string]interface{}{"out1": inputData}
 	case "number":
@@ -45,10 +45,6 @@ func (c *StreamInNode) loadInput(inputData string) map[string]interface{} {
 	default:
 		return map[string]interface{}{"out1": inputData}
 	}
-}
-
-type StreamOutNode struct {
-	Node
 }
 
 func streamOutMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {

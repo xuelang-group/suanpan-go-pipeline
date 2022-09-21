@@ -22,7 +22,7 @@ import (
 
 type Graph struct {
 	Status       bool
-	Nodes        []reflect.Value
+	Nodes        []components.Node
 	Components   []utils.Component
 	Config       utils.GraphConfig
 	NodeInfo     utils.NodeInfo
@@ -33,16 +33,8 @@ type Graph struct {
 
 func (g *Graph) Init() {
 	g.componentsInit()
-	g.typesInit()
 	g.graphInit()
 	g.nodesInit()
-}
-
-func (g *Graph) typesInit() {
-	myTypes := []interface{}{components.StreamInNode{}, components.StreamOutNode{}}
-	for _, v := range myTypes {
-		g.typeRegistry[fmt.Sprintf("%T", v)] = reflect.TypeOf(v)
-	}
 }
 
 func (g *Graph) graphInit() {
@@ -66,21 +58,21 @@ func (g *Graph) graphInit() {
 
 func (g *Graph) nodesInit() {
 	for _, nodeConfig := range g.Config.Nodes {
-		var realNode reflect.Value
-		if strings.HasPrefix(nodeConfig.Key, "in") {
-			realNode = reflect.New(g.typeRegistry["components.StreamInNode"])
-		} else if strings.HasPrefix(nodeConfig.Key, "in") {
-			realNode = reflect.New(g.typeRegistry["components.StreamOutNode"])
-		} else {
-			realNode = reflect.New(g.typeRegistry[fmt.Sprintf("components.%s", nodeConfig.Key)])
-		}
 
 		node := components.Node{Id: nodeConfig.Uuid, Key: nodeConfig.Key}
+		if strings.HasPrefix(node.Key, "in") {
+			node.Init("StreamIn")
+		} else if strings.HasPrefix(node.Key, "out") {
+			node.Init("StreamOut")
+		} else {
+			node.Init(nodeConfig.Key)
+		}
+
 		params := make(map[string]interface{})
 		for _, param := range nodeConfig.Parameters {
 			params[param["key"]] = param["value"]
 		}
-		if strings.HasPrefix(node.Key, "in") || strings.HasSuffix(node.Key, "in") {
+		if strings.HasPrefix(node.Key, "in") || strings.HasSuffix(node.Key, "out") {
 			var subtype string
 			if strings.HasPrefix(node.Key, "in") {
 				subtype = g.NodeInfo.Inputs[node.Key].Subtype
@@ -102,22 +94,19 @@ func (g *Graph) nodesInit() {
 			}
 		}
 
-		nodeJson, _ := json.Marshal(node)
-		json.Unmarshal(nodeJson, &realNode)
-
-		g.Nodes = append(g.Nodes, realNode)
+		g.Nodes = append(g.Nodes, node)
 	}
 	for _, connection := range g.Config.Connectors {
 		for _, node := range g.Nodes {
-			if node.FieldByName("Id").String() == connection.Src["uuid"] {
-				if !g.checkNode(connection.Tgt["uuid"], node.FieldByName("NextNodes")) {
-					node.FieldByName("NextNodes").Set(reflect.Append(node.FieldByName("NextNodes").Elem(), reflect.ValueOf(g.findNode(connection.Tgt["uuid"]))))
-					if !utils.SlicesContain(node.FieldByName("PortConnects").Interface()[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"]) {
+			if node.Id == connection.Src["uuid"] {
+				if !g.checkNode(connection.Tgt["uuid"], node.NextNodes) {
+					node.NextNodes = append(node.NextNodes, g.findNode(connection.Tgt["uuid"]))
+					if !utils.SlicesContain(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"]) {
 						node.PortConnects[connection.Src["port"]] = append(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"])
 					}
 				}
 			}
-			if node.FieldByName("Id").String() == connection.Tgt["uuid"] {
+			if node.Id == connection.Tgt["uuid"] {
 				if !g.checkNode(connection.Src["uuid"], node.NextNodes) {
 					node.PreviousNodes = append(node.PreviousNodes, g.findNode(connection.Tgt["uuid"]))
 				}
@@ -126,16 +115,16 @@ func (g *Graph) nodesInit() {
 	}
 }
 
-func (g *Graph) findNode(uuid string) *reflect.Value {
+func (g *Graph) findNode(uuid string) *components.Node {
 	for _, node := range g.Nodes {
-		if node.FieldByName("Id").String() == uuid {
+		if node.Id == uuid {
 			return &node
 		}
 	}
 	return nil
 }
 
-func (g *Graph) checkNode(uuid string, nodes reflect.Value) bool {
+func (g *Graph) checkNode(uuid string, nodes []*components.Node) bool {
 	for _, node := range nodes {
 		if node.Id == uuid {
 			return true
@@ -162,9 +151,9 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string) {
 		if len(node.PreviousNodes) == 0 {
 			g.wg.Add(1)
 			if strings.HasPrefix(node.Key, "in") {
-				go node.Run(components.RequestData{Data: inputData[node.Key], ID: id, Extra: extra}, &g.wg, g.stopChan)
+				go node.Run(node, components.RequestData{Data: inputData[node.Key], ID: id, Extra: extra}, &g.wg, g.stopChan)
 			} else {
-				go node.Run(components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan)
+				go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan)
 			}
 		}
 	}

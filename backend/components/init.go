@@ -38,8 +38,11 @@ func (c *Node) Init(nodeType string) {
 	switch nodeType {
 	case "StreamIn":
 		c.Main = streamInMain
+		c.UpdateInput = streamInUpdateInput
 	case "StreamOut":
+		c.Main = streamOutMain
 	case "JsonExtractor":
+		c.Main = jsonExtractorMain
 	default:
 	}
 }
