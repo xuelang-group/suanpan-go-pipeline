@@ -22,6 +22,10 @@ type Node struct {
 	Config        map[string]interface{}
 	Id            string
 	Key           string
+	Run           func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
+	dumpOutput    func(currentNode Node, outputData map[string]interface{})
+	UpdateInput   func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
+	Main          func(currentNode Node, inputData RequestData) (map[string]interface{}, error)
 }
 
 type RequestData struct {
@@ -30,37 +34,47 @@ type RequestData struct {
 	Extra string
 }
 
-func (c *Node) Run(inputData RequestData, wg *sync.WaitGroup, stopChan chan bool) {
+func (c *Node) Init(nodeType string) {
+	switch nodeType {
+	case "StreamIn":
+		c.Main = streamInMain
+	case "StreamOut":
+	case "JsonExtractor":
+	default:
+	}
+}
+
+func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool) {
 	defer wg.Done()
 	select {
 	case <-stopChan:
 		log.Info("Recive stop event")
 	default:
-		outputData, err := c.Main(inputData)
+		outputData, err := currentNode.Main(currentNode, inputData)
 		if err != nil {
-			log.Infof("Error occur when running node: %s, error info: %s", c.Key, err.Error())
+			log.Infof("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
 		} else {
-			c.dumpOutput(outputData)
-			if len(c.PortConnects["out1"]) > 0 {
-				for _, node := range c.NextNodes {
+			currentNode.dumpOutput(currentNode, outputData)
+			if len(currentNode.PortConnects["out1"]) > 0 {
+				for _, node := range currentNode.NextNodes {
 					wg.Add(1)
-					go node.Run(RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan)
+					go node.Run(currentNode, RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan)
 				}
 			}
 		}
 	}
 }
 
-func (c *Node) Main(inputData RequestData) (map[string]interface{}, error) {
-	log.Info("LoadInput function not implement.")
-	return map[string]interface{}{}, nil
-}
+// func (c *Node) Main(inputData RequestData) (map[string]interface{}, error) {
+// 	log.Info("LoadInput function not implement.")
+// 	return map[string]interface{}{}, nil
+// }
 
-func (c *Node) dumpOutput(outputData map[string]interface{}) {
+func dumpOutput(currentNode Node, outputData map[string]interface{}) {
 	for port, data := range outputData {
-		for _, tgt := range c.PortConnects[port] {
+		for _, tgt := range currentNode.PortConnects[port] {
 			tgtInfo := strings.Split(tgt, "-")
-			for _, node := range c.NextNodes {
+			for _, node := range currentNode.NextNodes {
 				if node.Id == tgtInfo[0] {
 					node.InputData[tgtInfo[1]] = data
 				}
@@ -70,6 +84,6 @@ func (c *Node) dumpOutput(outputData map[string]interface{}) {
 
 }
 
-func (c *Node) UpdateInput(inputData RequestData, wg *sync.WaitGroup, stopChan chan bool) {
-	log.Info("UpdateInput function not implement.")
-}
+// func (c *Node) UpdateInput(inputData RequestData, wg *sync.WaitGroup, stopChan chan bool) {
+// 	log.Info("UpdateInput function not implement.")
+// }

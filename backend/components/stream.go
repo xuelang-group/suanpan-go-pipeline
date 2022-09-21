@@ -51,27 +51,27 @@ type StreamOutNode struct {
 	Node
 }
 
-func (c *StreamOutNode) Main(inputData RequestData) (map[string]interface{}, error) {
-	c.sendOutput(inputData)
+func streamOutMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	sendOutput(currentNode, inputData)
 	return map[string]interface{}{}, nil
 }
 
-func (c *StreamOutNode) sendOutput(inputData RequestData) {
-	outputData := c.saveOutputData()
+func sendOutput(currentNode Node, inputData RequestData) {
+	outputData := saveOutputData(currentNode)
 	id := inputData.ID
 	extra := inputData.Extra
 	r := stream.Request{ID: id, Extra: extra}
 	r.Send(map[string]string{
-		c.Key: outputData,
+		currentNode.Key: outputData,
 	})
 }
 
-func (c *StreamOutNode) saveOutputData() string {
-	switch c.Config["subtype"] {
+func saveOutputData(currentNode Node) string {
+	switch currentNode.Config["subtype"] {
 	case "string":
-		return c.InputData["in1"].(string)
+		return currentNode.InputData["in1"].(string)
 	case "number":
-		return c.InputData["in1"].(string)
+		return currentNode.InputData["in1"].(string)
 	case "json":
 		log.Infof("not support json")
 		fallthrough
@@ -88,6 +88,6 @@ func (c *StreamOutNode) saveOutputData() string {
 		log.Infof("not support json")
 		fallthrough
 	default:
-		return c.InputData["in1"].(string)
+		return currentNode.InputData["in1"].(string)
 	}
 }

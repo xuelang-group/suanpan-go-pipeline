@@ -110,14 +110,14 @@ func (g *Graph) nodesInit() {
 	for _, connection := range g.Config.Connectors {
 		for _, node := range g.Nodes {
 			if node.FieldByName("Id").String() == connection.Src["uuid"] {
-				if !g.checkNode(connection.Tgt["uuid"], node.FieldByName("Id").Interface()) {
-					node.NextNodes = append(node.NextNodes, g.findNode(connection.Tgt["uuid"]))
-					if !utils.SlicesContain(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"]) {
+				if !g.checkNode(connection.Tgt["uuid"], node.FieldByName("NextNodes")) {
+					node.FieldByName("NextNodes").Set(reflect.Append(node.FieldByName("NextNodes").Elem(), reflect.ValueOf(g.findNode(connection.Tgt["uuid"]))))
+					if !utils.SlicesContain(node.FieldByName("PortConnects").Interface()[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"]) {
 						node.PortConnects[connection.Src["port"]] = append(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"])
 					}
 				}
 			}
-			if node.Id == connection.Tgt["uuid"] {
+			if node.FieldByName("Id").String() == connection.Tgt["uuid"] {
 				if !g.checkNode(connection.Src["uuid"], node.NextNodes) {
 					node.PreviousNodes = append(node.PreviousNodes, g.findNode(connection.Tgt["uuid"]))
 				}
@@ -126,16 +126,16 @@ func (g *Graph) nodesInit() {
 	}
 }
 
-func (g *Graph) findNode(uuid string) *interface{} {
+func (g *Graph) findNode(uuid string) *reflect.Value {
 	for _, node := range g.Nodes {
 		if node.FieldByName("Id").String() == uuid {
-			return &node.Interface()
+			return &node
 		}
 	}
 	return nil
 }
 
-func (g *Graph) checkNode(uuid string, nodes interface{}) bool {
+func (g *Graph) checkNode(uuid string, nodes reflect.Value) bool {
 	for _, node := range nodes {
 		if node.Id == uuid {
 			return true
