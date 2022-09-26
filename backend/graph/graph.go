@@ -6,32 +6,40 @@ import (
 	"fmt"
 	"goPipeline/components"
 	"goPipeline/utils"
-	"goPipeline/web"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
-	"reflect"
 	"strings"
 	"sync"
 
+	socketio "github.com/googollee/go-socket.io"
+	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
 	"gopkg.in/yaml.v3"
 )
 
 type Graph struct {
-	Status       bool
-	Nodes        []components.Node
-	Components   []utils.Component
-	Config       utils.GraphConfig
-	NodeInfo     utils.NodeInfo
-	stopChan     chan bool
-	wg           sync.WaitGroup
-	typeRegistry map[string]reflect.Type
+	Status         uint // 0: edit 1: deploy
+	PipelineStatus uint // 0: stop 1: running
+	Nodes          []components.Node
+	Components     []utils.Component
+	Config         utils.GraphConfig
+	NodeInfo       utils.NodeInfo
+	stopChan       chan bool
+	wg             sync.WaitGroup
+	path           string
+	key            string
 }
 
 func (g *Graph) Init() {
+	// 获取环境变量
+	e := config.GetEnv()
+	// 获取命令行参数
+	args := config.GetArgs()
+	g.path = path.Join(args["--storage-oss-temp-store"], "studio", e.SpUserId, "configs", e.SpAppId, e.SpNodeId, "graph.json")
+	g.key = strings.Join([]string{"studio", e.SpUserId, "configs", e.SpAppId, e.SpNodeId, "graph.json"}, "/")
 	g.componentsInit()
 	g.graphInit()
 	g.nodesInit()
@@ -39,12 +47,12 @@ func (g *Graph) Init() {
 
 func (g *Graph) graphInit() {
 	log.Info("Init function not implement.")
-	err := storage.FGetObject(web.GraphKey, web.GraphPath)
+	err := storage.FGetObject(g.key, g.path)
 	if err != nil {
 		log.Info("Fail to Load Config File, init with default value...")
 		g.Config = utils.GraphConfig{}
 	} else {
-		jsonFile, err := os.Open(web.GraphPath)
+		jsonFile, err := os.Open(g.path)
 		if err != nil {
 			log.Info(err.Error())
 			g.Config = utils.GraphConfig{}
@@ -52,7 +60,7 @@ func (g *Graph) graphInit() {
 		defer jsonFile.Close()
 		byteValue, _ := io.ReadAll(jsonFile)
 		json.Unmarshal(byteValue, &g.Config)
-		log.Info(fmt.Sprintf("Successfully Loaded Config File %s.", web.GraphPath))
+		log.Info(fmt.Sprintf("Successfully Loaded Config File %s.", g.path))
 	}
 }
 
@@ -83,21 +91,24 @@ func (g *Graph) nodesInit() {
 			params["subtype"] = subtype
 		}
 		node.Config = params
+		node.InputData = make(map[string]interface{})
+		node.OutputData = make(map[string]interface{})
 		for _, component := range g.Components {
 			if component.Key == node.Key {
 				for _, port := range component.Ports.In {
 					node.InputData[port.Id] = nil
 				}
 				for _, port := range component.Ports.Out {
-					node.InputData[port.Id] = nil
+					node.OutputData[port.Id] = nil
 				}
 			}
 		}
-
 		g.Nodes = append(g.Nodes, node)
 	}
 	for _, connection := range g.Config.Connectors {
-		for _, node := range g.Nodes {
+		for i := range g.Nodes {
+			node := &g.Nodes[i]
+			node.PortConnects = make(map[string][]string)
 			if node.Id == connection.Src["uuid"] {
 				if !g.checkNode(connection.Tgt["uuid"], node.NextNodes) {
 					node.NextNodes = append(node.NextNodes, g.findNode(connection.Tgt["uuid"]))
@@ -135,33 +146,36 @@ func (g *Graph) checkNode(uuid string, nodes []*components.Node) bool {
 
 func (g *Graph) Update(newGraph utils.GraphConfig) {
 	g.Config = newGraph
-	os.Remove(web.DataPath)
+	os.Remove(g.path)
 	dataJson, _ := json.Marshal(g.Config)
-	os.WriteFile(web.DataPath, dataJson, 0644)
-	storage.FPutObject(web.DataKey, web.DataPath)
+	os.WriteFile(g.path, dataJson, 0644)
+	storage.FPutObject(g.key, g.path)
 	g.Nodes = []components.Node{}
 	g.nodesInit()
 }
 
-func (g *Graph) Run(inputData map[string]string, id string, extra string) {
+func (g *Graph) Run(inputData map[string]string, id string, extra string, server *socketio.Server) {
 	log.Info("Start To Run Graph.")
+	g.PipelineStatus = 1
 	g.wg = sync.WaitGroup{}
 	g.stopChan = make(chan bool)
 	for _, node := range g.Nodes {
 		if len(node.PreviousNodes) == 0 {
 			g.wg.Add(1)
 			if strings.HasPrefix(node.Key, "in") {
-				go node.Run(node, components.RequestData{Data: inputData[node.Key], ID: id, Extra: extra}, &g.wg, g.stopChan)
+				if data, ok := inputData[strings.Replace(node.Key, "inputData", "in", -1)]; ok {
+					go node.Run(node, components.RequestData{Data: data, ID: id, Extra: extra}, &g.wg, g.stopChan, server)
+				} else {
+					go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
+				}
 			} else {
-				go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan)
+				go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
 			}
 		}
 	}
 	g.wg.Wait()
-	_, ok := (<-g.stopChan)
-	if ok {
-		close(g.stopChan)
-	}
+	g.PipelineStatus = 0
+	close(g.stopChan)
 	log.Info("Graph Run Done.")
 }
 
@@ -173,19 +187,16 @@ func (g *Graph) UpdateInputs(inputData map[string]string, id string, extra strin
 		if len(node.PreviousNodes) == 0 {
 			g.wg.Add(1)
 			if strings.HasPrefix(node.Key, "in") {
-				go node.UpdateInput(components.RequestData{Data: inputData[node.Key], ID: id, Extra: extra}, g.stopChan)
+				go node.UpdateInput(node, components.RequestData{Data: inputData[node.Key], ID: id, Extra: extra}, &g.wg, g.stopChan)
 			}
 		}
 	}
 	g.wg.Wait()
-	_, ok := (<-g.stopChan)
-	if ok {
-		close(g.stopChan)
-	}
+	close(g.stopChan)
 	log.Info("Update Inputs Done.")
 }
 
-func (g Graph) Stop() {
+func (g *Graph) Stop() {
 	log.Info("Stop Graph")
 	close(g.stopChan)
 }
@@ -218,6 +229,7 @@ func (g *Graph) componentsInit() {
 				for inputName, inputInfo := range g.NodeInfo.Inputs {
 					inPortConfig.Name = inputInfo.Description["zh_CN"]
 					inPortConfig.Key = inputName
+					inPortConfig.Parameters = []utils.Parameter{}
 					g.Components = append(g.Components, *inPortConfig)
 				}
 				outPortConfig := new(utils.Component)
@@ -230,6 +242,7 @@ func (g *Graph) componentsInit() {
 				for outputName, outputInfo := range g.NodeInfo.Outputs {
 					outPortConfig.Name = outputInfo.Description["zh_CN"]
 					outPortConfig.Key = outputName
+					outPortConfig.Parameters = []utils.Parameter{}
 					g.Components = append(g.Components, *outPortConfig)
 				}
 			} else {

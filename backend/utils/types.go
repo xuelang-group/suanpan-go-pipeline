@@ -54,7 +54,7 @@ type Component struct {
 	Name          string      `json:"name"`
 	Key           string      `json:"key"`
 	HelpUrl       string      `json:"helpUrl" yaml:"helpUrl"`
-	Parameters    []Parameter `json:"parameters,omitempty"`
+	Parameters    []Parameter `json:"parameters"`
 	Ports         Ports       `json:"ports"`
 }
 

@@ -2,22 +2,23 @@ package components
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/stream"
 )
 
-type StreamInNode struct {
-	Node
-}
-
-func streamInUpdateInput(currentNode Node, inputData RequestData) {
-	loadedInputData := loadInput(currentNode, inputData.Data)
-	currentNode.InputData["in1"] = loadedInputData
+func streamInLoadInput(currentNode Node, inputData RequestData) error {
+	currentNode.InputData["in1"] = inputData.Data
+	return nil
 }
 
 func streamInMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	return loadInput(currentNode, inputData.Data), nil
+	if len(inputData.Data) > 0 {
+		return loadInput(currentNode, inputData.Data), nil
+	} else {
+		return loadInput(currentNode, currentNode.InputData["in1"].(string)), nil
+	}
 }
 
 func loadInput(currentNode Node, inputData string) map[string]interface{} {
@@ -58,7 +59,7 @@ func sendOutput(currentNode Node, inputData RequestData) {
 	extra := inputData.Extra
 	r := stream.Request{ID: id, Extra: extra}
 	r.Send(map[string]string{
-		currentNode.Key: outputData,
+		strings.Replace(currentNode.Key, "outputData", "out", -1): outputData,
 	})
 }
 

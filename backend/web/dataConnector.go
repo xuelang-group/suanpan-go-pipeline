@@ -11,9 +11,6 @@ import (
 	"github.com/xuelang-group/suanpan-go-sdk/util"
 )
 
-var GraphKey string
-var GraphPath string
-
 func sendToStream() {
 
 	id := util.GenerateUUID()
@@ -47,31 +44,40 @@ func RunWeb() {
 	})
 
 	server.OnEvent("/", "process.run", func(s socketio.Conn, msg interface{}) RespondMsg {
-		return RespondMsg{true, []string{}}
+		id := util.GenerateUUID()
+		go graph.GraphInst.Run(map[string]string{}, id, "", server)
+		return RespondMsg{true, nil}
+	})
+
+	server.OnEvent("/", "process.stop", func(s socketio.Conn, msg interface{}) RespondMsg {
+		graph.GraphInst.Stop()
+		return RespondMsg{true, nil}
 	})
 
 	server.OnEvent("/", "process.status.get", func(s socketio.Conn, msg interface{}) RespondMsg {
-		return RespondMsg{true, []string{}}
+		nodeStatus := make(map[string]int)
+		for _, node := range graph.GraphInst.Nodes {
+			nodeStatus[node.Id] = node.Status
+		}
+		return RespondMsg{true, map[string]interface{}{"status": graph.GraphInst.PipelineStatus, "nodes": nodeStatus}}
 	})
 
-	server.OnEvent("/", "graph.status.set", func(s socketio.Conn, msg interface{}) RespondMsg {
-		return RespondMsg{true, []string{}}
+	server.OnEvent("/", "graph.status.set", func(s socketio.Conn, msg map[string]interface{}) RespondMsg {
+		graph.GraphInst.Status = uint(msg["status"].(float64))
+		return RespondMsg{true, graph.GraphInst.Status}
 	})
 
 	server.OnEvent("/", "graph.status.get", func(s socketio.Conn, msg interface{}) RespondMsg {
-		return RespondMsg{true, []string{}}
+		return RespondMsg{true, graph.GraphInst.Status}
 	})
 
-	server.OnEvent("/", "result.visualize.json", func(s socketio.Conn, msg interface{}) RespondMsg {
-		return RespondMsg{true, []string{}}
-	})
-
-	server.OnEvent("/", "result.download", func(s socketio.Conn, msg interface{}) RespondMsg {
-		return RespondMsg{true, []string{}}
-	})
-
-	server.OnEvent("/", "result.visualize", func(s socketio.Conn, msg interface{}) RespondMsg {
-		return RespondMsg{true, []string{}}
+	server.OnEvent("/", "result.visualize", func(s socketio.Conn, msg string) RespondMsg {
+		for _, node := range graph.GraphInst.Nodes {
+			if node.Id == msg {
+				return RespondMsg{true, node.OutputData}
+			}
+		}
+		return RespondMsg{true, ""}
 	})
 
 	server.OnError("/", func(s socketio.Conn, e error) {

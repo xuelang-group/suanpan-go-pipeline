@@ -86,8 +86,7 @@ export default {
         getComponentList(), 
         getGraph(), 
         getGraphStatus(), 
-        getProcessStatus(),
-        getStorageInfo()
+        getProcessStatus()
       ]
       ).then(data => {
         this.$store.commit('graph/componentRawData', data[0])

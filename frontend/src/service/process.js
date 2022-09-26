@@ -1,16 +1,11 @@
 import SocketIOClient from './sio'
 
-export function runProcess(graphData) {
-  return SocketIOClient.emit({event: 'process.run', data: {
-    mode: 1,
-    graph: graphData
-  }})
+export function runProcess() {
+  return SocketIOClient.emit({event: 'process.run'})
 }
 
 export function stopProcess() {
-  return SocketIOClient.emit({event: 'process.run', data: {
-    mode: 0
-  }})
+  return SocketIOClient.emit({event: 'process.stop'})
 }
 
 export function getProcessStatus() {

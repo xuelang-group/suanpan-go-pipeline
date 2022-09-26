@@ -66,6 +66,7 @@ export default {
       state.selConnectionDatas = val
     },
     graphStatus(state, val) {
+      console.log(val)
       state.graphStatus = val
     },
     graphLoading(state, val) {
@@ -88,17 +89,6 @@ export default {
         if(state.nodeDatas.length < 1) {
           reject('部署失败，图中没有节点')
         }else {
-          // let errMsg = []
-          // for(let i = 0; i < state.nodeDatas.length; i++) {
-          //   let nodeData = state.nodeDatas[i]
-          //   for(let j = 0; j < nodeData.parameters.length; j++) {
-          //     let param = nodeData.parameters[j]
-          //     if(!requiredValidate(param.value, param, nodeData.parameters) || !rangeValidate(param.value, param)) {
-          //       errMsg.push(`"${nodeData.name}"节点中的参数不满足要求`)
-          //       break
-          //     }
-          //   }
-          // }
           if(state.nodeDatas.every(nodeData => nodeData.ui.valid)) {
             resolve()
           }else {

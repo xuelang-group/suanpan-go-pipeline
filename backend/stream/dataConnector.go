@@ -17,10 +17,10 @@ func (c *DataConnectorComponent) CallHandler(r stream.Request) {
 	for key, value := range inputData {
 		log.Infof("input port %s receive request data %s", key, value)
 	}
-	if graph.GraphInst.Status {
-		graph.GraphInst.Run(inputData, r.ID, r.Extra)
+	if graph.GraphInst.Status == 1 {
+		go graph.GraphInst.Run(inputData, r.ID, r.Extra, nil)
 	} else {
-		graph.GraphInst.UpdateInputs(inputData, r.ID, r.Extra)
+		go graph.GraphInst.UpdateInputs(inputData, r.ID, r.Extra)
 	}
 }
 

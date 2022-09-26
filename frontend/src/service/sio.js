@@ -1,4 +1,4 @@
-import { io } from "socket.io-client";
+const io = require('socket.io-client');
 
 class SocketIOError extends Error {
   constructor(options) {
@@ -22,8 +22,8 @@ class SocketIOError extends Error {
 
 class SocketIOClient {
   constructor() {
-    // this.socket = io('https://spnext.xuelangyun.com', {path: '/proxr/shanglu/63567/d0bbf000a8b411ec946ef39f840f6aa2/8888/socket.io'});
-    this.socket = io({ path: new URL('./socket.io', location.href).pathname });
+    this.socket = io('http://10.88.34.184:30080', {path: '/proxr/100026/55149/e3ac66202f5711edb5cbad9c6d3deff4/8888/socket.io', transports: ['websocket'], upgrade: false});
+    // this.socket = io({ path: new URL('./socket.io', location.href).pathname });
     this.timeout = 30 * 1000;
   }
 
