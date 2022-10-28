@@ -78,7 +78,7 @@ func (g *Graph) nodesInit() {
 
 		params := make(map[string]interface{})
 		for _, param := range nodeConfig.Parameters {
-			params[param["key"]] = param["value"]
+			params[param.Key] = param.Value
 		}
 		if strings.HasPrefix(node.Key, "in") || strings.HasSuffix(node.Key, "out") {
 			var subtype string
@@ -93,13 +93,25 @@ func (g *Graph) nodesInit() {
 		node.Config = params
 		node.InputData = make(map[string]interface{})
 		node.OutputData = make(map[string]interface{})
-		for _, component := range g.Components {
-			if component.Key == node.Key {
-				for _, port := range component.Ports.In {
-					node.InputData[port.Id] = nil
-				}
-				for _, port := range component.Ports.Out {
-					node.OutputData[port.Id] = nil
+		if node.Key == "ExecutePythonScript" {
+			for _, port := range node.Config["inPorts"].([]interface{}) {
+				port := port.(map[string]interface{})
+				node.InputData[port["id"].(string)] = nil
+			}
+			for _, port := range node.Config["outPorts"].([]interface{}) {
+				port := port.(map[string]interface{})
+				node.OutputData[port["id"].(string)] = nil
+			}
+		} else {
+			for _, component := range g.Components {
+
+				if component.Key == node.Key {
+					for _, port := range component.Ports.In {
+						node.InputData[port.Id] = nil
+					}
+					for _, port := range component.Ports.Out {
+						node.OutputData[port.Id] = nil
+					}
 				}
 			}
 		}

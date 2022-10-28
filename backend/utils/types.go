@@ -15,15 +15,20 @@ type GraphConfig struct {
 }
 
 type NodeConfig struct {
-	Uuid       string              `json:"uuid"`
-	Puuit      string              `json:"puuid"`
-	Type       string              `json:"type"`
-	Key        string              `json:"key"`
-	Name       string              `json:"name"`
-	Status     int                 `json:"status"`
-	X          float64             `json:"x"`
-	Y          float64             `json:"y"`
-	Parameters []map[string]string `json:"parameters"`
+	Uuid       string          `json:"uuid"`
+	Puuit      string          `json:"puuid"`
+	Type       string          `json:"type"`
+	Key        string          `json:"key"`
+	Name       string          `json:"name"`
+	Status     int             `json:"status"`
+	X          float64         `json:"x"`
+	Y          float64         `json:"y"`
+	Parameters []NodeParameter `json:"parameters"`
+}
+
+type NodeParameter struct {
+	Key   string      `json:"key"`
+	Value interface{} `json:"value"`
 }
 
 type Connector struct {

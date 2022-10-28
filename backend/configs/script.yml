@@ -1,0 +1,31 @@
+- type: script
+  typeLabel: 代码编辑器
+  category:
+  categoryLabel:
+  name: Python脚本编辑器
+  key: ExecutePythonScript
+  supportConfigInPorts: True
+  supportConfigOutPorts: True
+  helpUrl:
+  parameters:
+    - key: script
+      name: Python脚本
+      type: inputPythonScript
+      required: True
+      default: "# The script MUST contain a function named run\n# which is the entry point for this module.\n# The entry point function can contain several input arguments:\n#   Param<in1>: a pandas.DataFrame\n#   Param<in2>: a pandas.DataFrame\ndef run(in1 = None, in2 = None):\n    return in1+in2, in1-in2\n"
+    - key: inPorts
+      name: 输入端口
+      type: ports
+      default:
+        - id: "in1"
+          name: "in1"
+        - id: "in2"
+          name: "in2"
+    - key: outPorts
+      name: 输出端口
+      type: ports
+      default:
+        - id: "out1"
+          name: "out1"
+        - id: "out2"
+          name: "out2"
