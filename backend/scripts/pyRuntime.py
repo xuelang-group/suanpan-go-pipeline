@@ -11,7 +11,8 @@ loadMethods = {
     "string": str,
     "int": int,
     "float": float,
-    "json": json.loads
+    "json": json.loads,
+    "bool": json.loads
 }
 
 dumpMethods = {
@@ -19,7 +20,8 @@ dumpMethods = {
     int: str,
     float: str,
     dict: json.dumps,
-    list: json.dumps
+    list: json.dumps,
+    bool: json.dumps
 }
 
 typeMappings = {
@@ -27,7 +29,8 @@ typeMappings = {
     int: "int",
     float: "float",
     dict: "json",
-    list: "json"
+    list: "json",
+    bool: "json"
 }
 
 def run(inputs=None, script=""):
@@ -40,10 +43,10 @@ def run(inputs=None, script=""):
     dumpedOutputs = []
     for output in outputs:
         if type(output) in dumpMethods:
-            dumpedOutputs.append(json.dumps({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]}))
+            dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
         else:
             raise Exception(f"type of {output} is not supported.")
-    return dumpedOutputs
+    return json.dumps(dumpedOutputs)
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Process some user define function.')
@@ -52,4 +55,4 @@ if __name__=="__main__":
     parser.add_argument('--script', dest='script', type=str,
                         help='script function process the inputs.')
     args = parser.parse_args()
-    print(",".join(run(args.inputs, args.script)))
+    print(run(args.inputs, args.script))
