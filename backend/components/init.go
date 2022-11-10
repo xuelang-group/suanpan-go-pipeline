@@ -49,6 +49,8 @@ func (c *Node) Init(nodeType string) {
 		c.main = streamOutMain
 	case "JsonExtractor":
 		c.main = jsonExtractorMain
+	case "ExecutePythonScript":
+		c.main = pyScriptMain
 	default:
 	}
 }

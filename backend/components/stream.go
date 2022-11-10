@@ -63,10 +63,23 @@ func sendOutput(currentNode Node, inputData RequestData) {
 	})
 }
 
+func saveAsString(outputData interface{}) string {
+	var outputString string
+	switch i := outputData.(type) {
+	case int, int16, int32, int8, int64:
+		outputString = strconv.FormatInt(i.(int64), 10)
+	case float32, float64:
+		outputString = strconv.FormatFloat(i.(float64), 'g', 12, 64)
+	default:
+		outputString = outputData.(string)
+	}
+	return outputString
+}
+
 func saveOutputData(currentNode Node) string {
 	switch currentNode.Config["subtype"] {
 	case "string":
-		return currentNode.InputData["in1"].(string)
+		return saveAsString(currentNode.InputData["in1"])
 	case "number":
 		return currentNode.InputData["in1"].(string)
 	case "json":
@@ -85,6 +98,6 @@ func saveOutputData(currentNode Node) string {
 		log.Infof("not support json")
 		fallthrough
 	default:
-		return currentNode.InputData["in1"].(string)
+		return saveAsString(currentNode.InputData["in1"])
 	}
 }

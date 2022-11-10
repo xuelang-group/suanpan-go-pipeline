@@ -26,13 +26,14 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	cmd := exec.Command("python3", cmdStrings...)
 	stdout, err := cmd.Output()
 	if err != nil {
-		log.Info(err.Error())
+		log.Infof("can not run script with error: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
 	outs := []scriptData{}
 	err1 := json.Unmarshal(stdout, &outs)
 	if err1 != nil {
-		log.Info(err.Error())
+		log.Infof("can not solve output data with error: %s", err.Error())
+		return map[string]interface{}{}, nil
 	}
 	return getScriptOutputData(outs, currentNode), nil
 }

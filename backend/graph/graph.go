@@ -120,7 +120,9 @@ func (g *Graph) nodesInit() {
 	for _, connection := range g.Config.Connectors {
 		for i := range g.Nodes {
 			node := &g.Nodes[i]
-			node.PortConnects = make(map[string][]string)
+			if node.PortConnects == nil {
+				node.PortConnects = make(map[string][]string)
+			}
 			if node.Id == connection.Src["uuid"] {
 				if !g.checkNode(connection.Tgt["uuid"], node.NextNodes) {
 					node.NextNodes = append(node.NextNodes, g.findNode(connection.Tgt["uuid"]))
@@ -139,9 +141,9 @@ func (g *Graph) nodesInit() {
 }
 
 func (g *Graph) findNode(uuid string) *components.Node {
-	for _, node := range g.Nodes {
-		if node.Id == uuid {
-			return &node
+	for i := range g.Nodes {
+		if g.Nodes[i].Id == uuid {
+			return &g.Nodes[i]
 		}
 	}
 	return nil

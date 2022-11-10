@@ -7,37 +7,43 @@ def runScript(inputs):
     return outputs
 '''
 
+def defaultLoad(x):
+    return x
+
 loadMethods = {
     "string": str,
     "int": int,
     "float": float,
-    "json": json.loads,
-    "bool": json.loads
+    "json": defaultLoad,
+    "bool": defaultLoad
 }
 
+def defaultDump(x):
+    return x
+
 dumpMethods = {
-    str: str,
-    int: str,
-    float: str,
-    dict: json.dumps,
-    list: json.dumps,
-    bool: json.dumps
+    str: defaultDump,
+    int: defaultDump,
+    float: defaultDump,
+    dict: defaultDump,
+    list: defaultDump,
+    bool: defaultDump
 }
 
 typeMappings = {
-    str: "string",
-    int: "int",
-    float: "float",
+    str: "json",
+    int: "json",
+    float: "json",
     dict: "json",
     list: "json",
     bool: "json"
 }
 
 def run(inputs=None, script=""):
-    exec(functionSting % script.replace("\\n", "\n    "), globals())
+    exec(functionSting % script.replace("\n", "\n    "), globals())
     loadedInputs = []
     for input in inputs:
-        input = json.loads(input)
+        input = json.loads(eval("'{}'".format(input)))
         loadedInputs.append(loadMethods[input["type"]](input["data"]))
     outputs = runScript(loadedInputs)
     dumpedOutputs = []
