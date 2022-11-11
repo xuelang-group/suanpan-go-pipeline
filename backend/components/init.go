@@ -8,12 +8,6 @@ import (
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 )
 
-type NodeAction interface {
-	Run(inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
-	UpdateInput(inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
-	Main(inputData RequestData) (map[string]interface{}, error)
-}
-
 type Node struct {
 	PreviousNodes []*Node
 	NextNodes     []*Node
@@ -28,6 +22,7 @@ type Node struct {
 	UpdateInput   func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
 	loadInput     func(currentNode Node, inputData RequestData) error
 	main          func(currentNode Node, inputData RequestData) (map[string]interface{}, error)
+	initNode      func(currentNode Node) error
 	Status        int // 0: stoped 1： running 2： finished -1：error
 }
 
@@ -41,6 +36,7 @@ func (c *Node) Init(nodeType string) {
 	c.Run = Run
 	c.UpdateInput = UpdateInput
 	c.dumpOutput = dumpOutput
+	c.initNode = defaultInit
 	switch nodeType {
 	case "StreamIn":
 		c.main = streamInMain
@@ -51,8 +47,18 @@ func (c *Node) Init(nodeType string) {
 		c.main = jsonExtractorMain
 	case "ExecutePythonScript":
 		c.main = pyScriptMain
+	case "PostGresReader":
+		c.main = postgresReaderMain
+		c.initNode = postgresInit
+	case "PostGresWriter":
+		c.main = postgresWriterMain
+		c.initNode = postgresInit
+	case "PostGresExecutor":
+		c.main = postgresExecutorMain
+		c.initNode = postgresInit
 	default:
 	}
+	c.initNode(*c)
 }
 
 func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server) {
@@ -111,4 +117,8 @@ func dumpOutput(currentNode Node, outputData map[string]interface{}) {
 		}
 	}
 
+}
+
+func defaultInit(currentNode Node) error {
+	return nil
 }
