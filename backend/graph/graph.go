@@ -218,7 +218,7 @@ func (g *Graph) Stop() {
 func (g *Graph) componentsInit() {
 	files, err := ioutil.ReadDir("configs")
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(err.Error()) 
 	}
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".yml") {
@@ -252,7 +252,7 @@ func (g *Graph) componentsInit() {
 						outPortConfig = &v
 						break
 					}
-				}
+				} 
 				for outputName, outputInfo := range g.NodeInfo.Outputs {
 					outPortConfig.Name = outputInfo.Description["zh_CN"]
 					outPortConfig.Key = outputName

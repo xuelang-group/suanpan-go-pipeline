@@ -47,13 +47,13 @@ func (c *Node) Init(nodeType string) {
 		c.main = jsonExtractorMain
 	case "ExecutePythonScript":
 		c.main = pyScriptMain
-	case "PostGresReader":
+	case "PostgresReader":
 		c.main = postgresReaderMain
 		c.initNode = postgresInit
-	case "PostGresWriter":
+	case "postgresWriter":
 		c.main = postgresWriterMain
 		c.initNode = postgresInit
-	case "PostGresExecutor":
+	case "PostgresSqlExecuter":
 		c.main = postgresExecutorMain
 		c.initNode = postgresInit
 	default:

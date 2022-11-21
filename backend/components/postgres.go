@@ -2,11 +2,16 @@ package components
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/go-gota/gota/dataframe"
 	_ "github.com/lib/pq"
+	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
+	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
 )
 
 type pgDataCol struct {
@@ -90,13 +95,64 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		records,
 		dataframe.DetectTypes(true),
 	)
-	return map[string]interface{}{"out1": df}, nil
+	tmpPath := "data.csv"
+	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/out1", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId)
+	os.Remove(tmpPath)
+	file, err := os.Create(tmpPath)
+	if err != nil {
+		log.Error("无法创建临时文件")
+		errors.New("无法创建临时文件")
+	}
+	log.Infof("node df path is  %s, tmpKey is %s", file, tmpKey)
+	df.WriteCSV(file)
+	storage.FPutObject(fmt.Sprintf("%s/data.csv", tmpKey), tmpPath)
+
+	return map[string]interface{}{"out1": tmpKey}, nil
 }
 
 func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	log.Infof("ly---- sql currentNode.Config  is %s", currentNode.Config)
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
+
+	db, err := sql.Open("postgres", psqlconn)
+	if err != nil {
+		log.Infof("数据库连接失败，请检查配置")
+		return map[string]interface{}{}, nil
+	}
+	defer db.Close()
+	if err = db.Ping(); err != nil {
+		log.Infof("数据库测试连接失败，请检查配置")
+		return map[string]interface{}{}, nil
+	}
+
+	newTableName := currentNode.Config["table"]
+	scheam := currentNode.Config["databaseChoose"]
+
 	return map[string]interface{}{}, nil
 }
 
 func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	return map[string]interface{}{}, nil
+	log.Infof("ly---- sql currentNode.Config  is %s", currentNode.Config)
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
+
+	db, err := sql.Open("postgres", psqlconn)
+	if err != nil {
+		log.Infof("数据库连接失败，请检查配置")
+		return map[string]interface{}{"out1": "false"}, nil
+	}
+	defer db.Close()
+	if err = db.Ping(); err != nil {
+		log.Infof("数据库测试连接失败，请检查配置")
+		return map[string]interface{}{"out1": "false"}, nil
+	}
+	tableQueryStr := currentNode.Config["sql"].(string)
+	// log.Infof("ly---- sql tableQueryStr  is %s", tableQueryStr)
+	rows, err := db.Query(tableQueryStr)
+	log.Infof("ly--- execute success ")
+	defer rows.Close()
+	if err != nil {
+		log.Infof("数据表执行sql语句失败")
+		return map[string]interface{}{"out1": "false"}, nil
+	}
+	return map[string]interface{}{"out1": "true"}, nil
 }

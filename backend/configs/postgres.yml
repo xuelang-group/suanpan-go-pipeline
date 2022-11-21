@@ -1,0 +1,153 @@
+- type: database
+  typeLabel: 数据库
+  category: read
+  categoryLabel: 数据库读取
+  name: Postgres数据库读取
+  key: PostgresReader
+  helpUrl:
+  parameters:
+    - key: host
+      name: 主机名或IP地址
+      type: inputString
+      required: True
+      default: "139.224.253.179"
+    - key: port
+      name: 端口
+      type: inputString
+      required: True
+      default: "60032"
+    - key: user
+      name: 用户名
+      type: inputString
+      required: True
+      default: "root"
+    - key: password
+      name: 密码
+      type: inputString
+      required: True
+      default: "123456"
+    - key: dbname
+      name: 数据库
+      type: inputString
+      default: postgres
+    - key: table
+      name: 表名
+      type: inputString
+      default: test0818
+    - key: schema
+      name: schema
+      type: inputString
+      default: public
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1
+
+- type: database
+  typeLabel: 数据库
+  category: execute
+  categoryLabel: 数据库执行
+  name: Postgres数据库执行sql
+  key: PostgresSqlExecuter
+  helpUrl:
+  parameters:
+    - key: host
+      name: 主机名或IP地址
+      type: inputString
+      required: True
+      default: "139.224.253.179"
+    - key: port
+      name: 端口
+      type: inputString
+      required: True
+      default: "60032"
+    - key: user
+      name: 用户名
+      type: inputString
+      required: True
+      default: "root"
+    - key: password
+      name: 密码
+      type: inputString
+      required: True
+      default: "123456"
+    - key: dbname
+      name: 数据库
+      type: inputString
+      default: postgres
+    - key: sql
+      name: sql执行语句
+      type: inputString
+      default: "CREATE TABLE account(user_id serial PRIMARY KEY,username VARCHAR (50) UNIQUE NOT NULL,password VARCHAR (50) NOT NULL);"
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1
+- type: database
+  typeLabel: 数据库
+  category: write
+  categoryLabel: 数据库写入
+  name: Postgres数据库写入
+  key: PostgresWriter
+  helpUrl:
+  parameters:
+    - key: host
+      name: 主机名或IP地址
+      type: inputString
+      required: True
+      default: "139.224.253.179"
+    - key: port
+      name: 端口
+      type: inputString
+      required: True
+      default: "60032"
+    - key: user
+      name: 用户名
+      type: inputString
+      required: True
+      default: "root"
+    - key: password
+      name: 密码
+      type: inputString
+      required: True
+      default: "123456"
+    - key: dbname
+      name: 数据库
+      type: inputString
+      default: postgres
+    - key: databaseChoose
+      name: 写入数据库
+      type: inputString
+      default: postgres
+    - key: table
+      name: 写入表名
+      type: inputString
+      required: True
+    - key: mode
+      name: 写入方式
+      options:
+        - value: append
+          label: 追加
+        - value: replace
+          label: 覆盖
+        - value: clearAndAppend
+          label: 清空并追加
+      type: select
+      default: append
+    - key: chunksize
+      name: 每次写入最大行数
+      type: inputInteger
+      default: 100000
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1
