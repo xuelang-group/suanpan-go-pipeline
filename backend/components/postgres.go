@@ -34,6 +34,10 @@ func postgresInit(currentNode Node) error {
 }
 
 func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	// if currentNode.InputData == nil {
+	// 	return map[string]interface{}{}, nil
+	// }
+
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
 	db, err := sql.Open("postgres", psqlconn)
 	if err != nil {
@@ -117,6 +121,10 @@ func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]int
 	// log.Infof("ly---- sql currentNode.Config  is %s", currentNode.Config)
 	// log.Infof("ly---- sql inputData  is %s", currentNode.InputData)
 	//studio/100026/tmp/55149/35963ba0697d11edbc2631b746db181e/2e9df810697811edb633ab10346ad070/out1
+	// if currentNode.InputData == nil {
+	// 	return map[string]interface{}{}, nil
+	// }
+
 	args := config.GetArgs()
 	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), "data.csv")
 	tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
@@ -152,6 +160,10 @@ func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]int
 }
 
 func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	// if currentNode.InputData == nil {
+	// 	return map[string]interface{}{}, nil
+	// }
+
 	//log.Infof("ly---- sql currentNode.Config  is %s", currentNode.Config)
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
 
@@ -224,7 +236,7 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 			log.Infof("创建表失败")
 			return
 		}
-		log.Infof("ly---- dataframe map is %s", df.Maps())
+		// log.Infof("ly---- dataframe map is %s", df.Maps())
 		//插入数据
 		dfToMaps := df.Maps()
 		l := len(dfToMaps)
@@ -232,18 +244,17 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 		n := l/chunksize + 1
 		//
 		//
-		var tmpStr string
-		var rowTmpStr string
 
 		for iter := 0; iter < n; iter++ {
 			var tableInsertValues string
 			tableInsertArr := make([]string, 0)
 			if iter < n-1 {
 				for i := iter * chunksize; i < chunksize*(iter+1); i++ {
-					tmpStr = ""
-					rowTmpStr = ""
+					tmpNameValueMap := make(map[string]string)
+					var tmpStr string
+					var rowTmpStr string
 					row := dfToMaps[i]
-					for _, v := range row {
+					for k, v := range row {
 						var value string
 						switch vtype := v.(type) {
 						case int:
@@ -254,22 +265,26 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 						case float32, float64:
 							value = strconv.FormatFloat(vtype.(float64), 'g', 12, 64)
 						default:
-							value = v.(string)
+							value = "`" + v.(string) + "`"
 
 						}
-						tmpStr = tmpStr + value + ","
+						tmpNameValueMap[k] = value
 					}
-					log.Infof("ly---- brfore tmpStr  is %s", tmpStr)
+					for _, name := range df.Names() {
+						tmpStr = tmpStr + tmpNameValueMap[name] + ","
+					}
+					// log.Infof("ly---- brfore tmpStr  is %s", tmpStr)
 					rowTmpStr = "(" + tmpStr[0:len(tmpStr)-1] + ")"
 					log.Infof("ly---- rowTmpStr  is %s", rowTmpStr)
 					tableInsertArr = append(tableInsertArr, rowTmpStr)
 				}
 			} else {
 				for i := iter * chunksize; i < l; i++ {
-					tmpStr = ""
-					rowTmpStr = ""
+					tmpNameValueMap := make(map[string]string)
+					var tmpStr string
+					var rowTmpStr string
 					row := dfToMaps[i]
-					for _, v := range row {
+					for k, v := range row {
 						var value string
 						switch vtype := v.(type) {
 						case int:
@@ -280,22 +295,23 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 						case float32, float64:
 							value = strconv.FormatFloat(vtype.(float64), 'g', 12, 64)
 						default:
-							value = v.(string)
-
+							value = "'" + v.(string) + "'"
 						}
-						tmpStr = tmpStr + value + ","
+						tmpNameValueMap[k] = value
 					}
-					log.Infof("ly---- brfore tmpStr  is %s", tmpStr)
+					for _, name := range df.Names() {
+						tmpStr = tmpStr + tmpNameValueMap[name] + ","
+					}
 					rowTmpStr = "(" + tmpStr[0:len(tmpStr)-1] + ")"
 					log.Infof("ly---- rowTmpStr  is %s", rowTmpStr)
 					tableInsertArr = append(tableInsertArr, rowTmpStr)
 				}
 			}
 			tableInsertValues = strings.Join(tableInsertArr, ",")
-			log.Infof("ly---- tableInsertValues  is %s", tableInsertValues) //(12,23),(3,2),(3,7),(4,6)
+			// log.Infof("ly---- tableInsertValues  is %s", tableInsertValues) //(12,23),(3,2),(3,7),(4,6)
 			colnames := df.Names()
 			tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(colnames, ","), tableInsertValues)
-			// log.Infof("ly---- tableInsertStr  is %s", tableInsertStr)
+			//log.Infof("ly---- tableInsertStr  is %s", tableInsertStr)
 			rows, err := db.Query(tableInsertStr)
 			log.Infof("ly--- replace wirte table success ")
 			defer rows.Close()
@@ -305,6 +321,120 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 			}
 		}
 
+	} else {
+		//判断表是否存在并获取表头信息
+		tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
+		// log.Infof("ly---- ---1 %s ", tableColumnStr)
+		colRows, err := db.Query(tableColumnStr)
+		if err != nil {
+			log.Infof("数据表检索失败, 请确认要写入的表是否存在")
+			return
+		}
+		tableCols := make([]pgDataCol, 0)
+		defer colRows.Close()
+		for colRows.Next() {
+			var tableCol pgDataCol
+			err = colRows.Scan(&tableCol.Name, &tableCol.Type)
+			if err != nil {
+				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
+				return
+			}
+			tableCols = append(tableCols, tableCol)
+		}
+		headers := make([]string, 0)
+		for _, col := range tableCols {
+			headers = append(headers, col.Name)
+		}
+		log.Infof("ly---- headers is %s", headers)
+		if strings.Compare(mode, "clearAndAppend") == 0 {
+			log.Infof("开始清空并追加")
+			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, tablename)
+			rows, err := db.Query(tableClearStr)
+			defer rows.Close()
+			if err != nil {
+				log.Infof("清空表失败")
+				return
+			}
+		}
+		//插入数据
+		dfToMaps := df.Maps()
+		l := len(dfToMaps)
+		log.Infof("ly----chunksize  is %s", chunksize)
+		chunksize, err := strconv.Atoi(chunksize)
+		n := l/chunksize + 1
+		for iter := 0; iter < n; iter++ {
+			var tableInsertValues string
+			tableInsertArr := make([]string, 0)
+			if iter < n-1 {
+				for i := iter * chunksize; i < chunksize*(iter+1); i++ {
+					tmpNameValueMap := make(map[string]string)
+					var tmpStr string
+					var rowTmpStr string
+					row := dfToMaps[i]
+					for k, v := range row {
+						var value string
+						switch vtype := v.(type) {
+						case int:
+							value = strconv.Itoa(v.(int))
+						case int64:
+							//fmt.Println(k, "is int", vv)
+							value = strconv.FormatInt(v.(int64), 10)
+						case float32, float64:
+							value = strconv.FormatFloat(vtype.(float64), 'g', 12, 64)
+						default:
+							value = "'" + v.(string) + "'"
+
+						}
+						tmpNameValueMap[k] = value
+					}
+					for _, name := range df.Names() {
+						tmpStr = tmpStr + tmpNameValueMap[name] + ","
+					}
+					rowTmpStr = "(" + tmpStr[0:len(tmpStr)-1] + ")"
+					log.Infof("ly---- rowTmpStr  is %s", rowTmpStr)
+					tableInsertArr = append(tableInsertArr, rowTmpStr)
+				}
+			} else {
+				for i := iter * chunksize; i < l; i++ {
+					tmpNameValueMap := make(map[string]string)
+					var tmpStr string
+					var rowTmpStr string
+					row := dfToMaps[i]
+					for k, v := range row {
+						var value string
+						switch vtype := v.(type) {
+						case int:
+							value = strconv.Itoa(v.(int))
+						case int64:
+							//fmt.Println(k, "is int", vv)
+							value = strconv.FormatInt(v.(int64), 10)
+						case float32, float64:
+							value = strconv.FormatFloat(vtype.(float64), 'g', 12, 64)
+						default:
+							value = "'" + v.(string) + "'"
+						}
+						tmpNameValueMap[k] = value
+					}
+					for _, name := range df.Names() {
+						tmpStr = tmpStr + tmpNameValueMap[name] + ","
+					}
+					rowTmpStr = "(" + tmpStr[0:len(tmpStr)-1] + ")"
+					log.Infof("ly---- rowTmpStr  is %s", rowTmpStr)
+					tableInsertArr = append(tableInsertArr, rowTmpStr)
+				}
+			}
+			tableInsertValues = strings.Join(tableInsertArr, ",")
+			// log.Infof("ly---- tableInsertValues  is %s", tableInsertValues) //(12,23),(3,2),(3,7),(4,6)
+			tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
+			log.Infof("ly---- tableInsertStr  is %s", tableInsertStr)
+			rows, err := db.Query(tableInsertStr)
+			log.Infof("ly--- append wirte table success ")
+			defer rows.Close()
+			if err != nil {
+				log.Infof("追加写入表失败")
+				return
+			}
+		}
 	}
 	return
 }

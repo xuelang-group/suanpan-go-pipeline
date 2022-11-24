@@ -10,22 +10,22 @@
       name: 主机名或IP地址
       type: inputString
       required: True
-      default: "139.224.253.179"
+      default: ""
     - key: port
       name: 端口
       type: inputString
       required: True
-      default: "60032"
+      default: ""
     - key: user
       name: 用户名
       type: inputString
       required: True
-      default: "root"
+      default: ""
     - key: password
       name: 密码
       type: inputString
       required: True
-      default: "123456"
+      default: ""
     - key: dbname
       name: 数据库
       type: inputString
@@ -33,7 +33,7 @@
     - key: table
       name: 表名
       type: inputString
-      default: test0818
+      default: ""
     - key: schema
       name: schema
       type: inputString
@@ -58,22 +58,22 @@
       name: 主机名或IP地址
       type: inputString
       required: True
-      default: "139.224.253.179"
+      default: ""
     - key: port
       name: 端口
       type: inputString
       required: True
-      default: "60032"
+      default: ""
     - key: user
       name: 用户名
       type: inputString
       required: True
-      default: "root"
+      default: ""
     - key: password
       name: 密码
       type: inputString
       required: True
-      default: "123456"
+      default: ""
     - key: dbname
       name: 数据库
       type: inputString
@@ -81,7 +81,7 @@
     - key: sql
       name: sql执行语句
       type: inputString
-      default: "CREATE TABLE account(user_id serial PRIMARY KEY,username VARCHAR (50) UNIQUE NOT NULL,password VARCHAR (50) NOT NULL);"
+      default: ""
   ports:
     in:
       - id: in1
@@ -102,22 +102,22 @@
       name: 主机名或IP地址
       type: inputString
       required: True
-      default: "139.224.253.179"
+      default: ""
     - key: port
       name: 端口
       type: inputString
       required: True
-      default: "60032"
+      default: ""
     - key: user
       name: 用户名
       type: inputString
       required: True
-      default: "root"
+      default: ""
     - key: password
       name: 密码
       type: inputString
       required: True
-      default: "123456"
+      default: ""
     - key: dbname
       name: 数据库
       type: inputString
@@ -125,7 +125,7 @@
     - key: databaseChoose
       name: 写入数据库
       type: inputString
-      default: postgres
+      default: public
     - key: table
       name: 写入表名
       type: inputString
@@ -140,7 +140,7 @@
         - value: clearAndAppend
           label: 清空并追加
       type: select
-      default: replace
+      default: clearAndAppend
     - key: chunksize
       name: 每次写入最大行数
       type: inputString

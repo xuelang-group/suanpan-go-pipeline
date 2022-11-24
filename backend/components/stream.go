@@ -14,9 +14,17 @@ func streamInLoadInput(currentNode Node, inputData RequestData) error {
 }
 
 func streamInMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	log.Infof("ly---- straminput  is %s", inputData.Data)
+	if len(inputData.Data) == 0 {
+		return map[string]interface{}{}, nil
+	}
+	//studio/100026/tmp/55149/b18cba70697a11edbc2631b746db181e/2e9df810697811edb633ab10346ad070/out1
 	if len(inputData.Data) > 0 {
 		return loadInput(currentNode, inputData.Data), nil
 	} else {
+		if currentNode.InputData["in1"] == nil {
+			return map[string]interface{}{}, nil
+		}
 		return loadInput(currentNode, currentNode.InputData["in1"].(string)), nil
 	}
 }
@@ -49,6 +57,9 @@ func loadInput(currentNode Node, inputData string) map[string]interface{} {
 }
 
 func streamOutMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	if currentNode.InputData["in1"] == nil {
+		return map[string]interface{}{}, nil
+	}
 	sendOutput(currentNode, inputData)
 	return map[string]interface{}{}, nil
 }

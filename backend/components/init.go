@@ -8,6 +8,12 @@ import (
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 )
 
+type NodeAction interface {
+	Run(inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
+	UpdateInput(inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
+	Main(inputData RequestData) (map[string]interface{}, error)
+}
+
 type Node struct {
 	PreviousNodes []*Node
 	NextNodes     []*Node
@@ -36,7 +42,6 @@ func (c *Node) Init(nodeType string) {
 	c.Run = Run
 	c.UpdateInput = UpdateInput
 	c.dumpOutput = dumpOutput
-	c.initNode = defaultInit
 	switch nodeType {
 	case "StreamIn":
 		c.main = streamInMain
@@ -50,25 +55,39 @@ func (c *Node) Init(nodeType string) {
 	case "PostgresReader":
 		c.main = postgresReaderMain
 		c.initNode = postgresInit
-	case "postgresWriter":
-		c.main = postgresWriterMain
-		c.initNode = postgresInit
 	case "PostgresSqlExecuter":
 		c.main = postgresExecutorMain
 		c.initNode = postgresInit
+	case "PostgresWriter":
+		c.main = postgresWriterMain
+		c.initNode = postgresInit
 	default:
 	}
-	c.initNode(*c)
 }
 
 func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Caught:", r)
+		}
+		// panic("catch me")
+	}()
 	defer wg.Done()
 	select {
 	case <-stopChan:
 		log.Info("Recive stop event")
 	default:
+
 		currentNode.Status = 1
+		// log.Infof("ly node complete： %s", currentNode.Config)
+		// log.Infof("ly node inputData： data %s, id %s, extra %s , %s", inputData.Data, inputData.ID, inputData.Extra, currentNode.InputData) //studio/100026/tmp/55149/17f253406bd011ed8c5bd97fbe71bc3d/2e9df810697811edb633ab10346ad070/out1
+		// log.Infof("ly node main %s", currentNode.main)
+		if len(inputData.Data) < 0 && currentNode.InputData == nil {
+			return
+		}
 		outputData, err := currentNode.main(currentNode, inputData)
+		log.Infof("node complete： %s", currentNode.Id)
+		log.Infof("node output data： %s", outputData)
 		if err != nil {
 			log.Infof("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
 			currentNode.Status = -1
@@ -77,18 +96,24 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 				server.BroadcastToNamespace("/", "notify.process.error", map[string]string{currentNode.Id: err.Error()})
 			}
 		} else {
+			log.Infof("node connects: %s %s", currentNode.Id, currentNode.PortConnects) //159abce2c39f4b1aa274072f0f5e0fad map[out1:[11720a7a2e3f44eba0acbbe0aea5f85c-in1]]
 			currentNode.dumpOutput(currentNode, outputData)
 			currentNode.Status = 2
 			if server != nil {
 				server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: 2})
 			}
-			if len(currentNode.PortConnects["out1"]) > 0 {
+			log.Infof("node connects: %s %s", currentNode.Id, currentNode.PortConnects)
+			if len(currentNode.NextNodes) > 0 {
+				log.Info("执行后续组件")
 				for _, node := range currentNode.NextNodes {
+					log.Info("找到后续组件")
+					log.Infof("ly--currentnode-afternode---: %s, %s, %s ", currentNode.Id, node.Id, node.PortConnects)
 					wg.Add(1)
 					go node.Run(*node, RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server)
 				}
 			}
 		}
+
 	}
 }
 
@@ -106,7 +131,7 @@ func UpdateInput(currentNode Node, inputData RequestData, wg *sync.WaitGroup, st
 }
 
 func dumpOutput(currentNode Node, outputData map[string]interface{}) {
-	for port, data := range outputData {
+	for port, data := range outputData { //map[out1:true]
 		for _, tgt := range currentNode.PortConnects[port] {
 			tgtInfo := strings.Split(tgt, "-")
 			for _, node := range currentNode.NextNodes {
@@ -116,9 +141,4 @@ func dumpOutput(currentNode Node, outputData map[string]interface{}) {
 			}
 		}
 	}
-
-}
-
-func defaultInit(currentNode Node) error {
-	return nil
 }
