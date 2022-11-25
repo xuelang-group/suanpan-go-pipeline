@@ -45,7 +45,7 @@ func RunWeb() {
 
 	server.OnEvent("/", "process.run", func(s socketio.Conn, msg interface{}) RespondMsg {
 		id := util.GenerateUUID()
-		go graph.GraphInst.Run(map[string]string{}, id, "", server)
+		go graph.GraphInst.Run(map[string]string{}, id, "", server, true)
 		return RespondMsg{true, nil}
 	})
 

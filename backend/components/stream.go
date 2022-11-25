@@ -14,7 +14,6 @@ func streamInLoadInput(currentNode Node, inputData RequestData) error {
 }
 
 func streamInMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	log.Infof("ly---- straminput  is %s", inputData.Data)
 	if len(inputData.Data) == 0 {
 		return map[string]interface{}{}, nil
 	}

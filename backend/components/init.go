@@ -1,6 +1,7 @@
 package components
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
@@ -77,43 +78,36 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 	case <-stopChan:
 		log.Info("Recive stop event")
 	default:
-
-		currentNode.Status = 1
-		// log.Infof("ly node complete： %s", currentNode.Config)
-		// log.Infof("ly node inputData： data %s, id %s, extra %s , %s", inputData.Data, inputData.ID, inputData.Extra, currentNode.InputData) //studio/100026/tmp/55149/17f253406bd011ed8c5bd97fbe71bc3d/2e9df810697811edb633ab10346ad070/out1
-		// log.Infof("ly node main %s", currentNode.main)
-		if len(inputData.Data) < 0 && currentNode.InputData == nil {
-			return
+		receiveInputs := false
+		for _, v := range currentNode.InputData {
+			if v != nil {
+				receiveInputs = true
+			}
 		}
-		outputData, err := currentNode.main(currentNode, inputData)
-		log.Infof("node complete： %s", currentNode.Id)
-		log.Infof("node output data： %s", outputData)
-		if err != nil {
-			log.Infof("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
-			currentNode.Status = -1
-			if server != nil {
-				server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: -1})
-				server.BroadcastToNamespace("/", "notify.process.error", map[string]string{currentNode.Id: err.Error()})
-			}
-		} else {
-			log.Infof("node connects: %s %s", currentNode.Id, currentNode.PortConnects) //159abce2c39f4b1aa274072f0f5e0fad map[out1:[11720a7a2e3f44eba0acbbe0aea5f85c-in1]]
-			currentNode.dumpOutput(currentNode, outputData)
-			currentNode.Status = 2
-			if server != nil {
-				server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: 2})
-			}
-			log.Infof("node connects: %s %s", currentNode.Id, currentNode.PortConnects)
-			if len(currentNode.NextNodes) > 0 {
-				log.Info("执行后续组件")
+		if len(inputData.Data) > 0 || receiveInputs {
+			currentNode.Status = 1
+			outputData, err := currentNode.main(currentNode, inputData)
+			log.Infof("node complete： %s", currentNode.Id)
+			log.Infof("node output data： %s", outputData)
+			if err != nil {
+				log.Infof("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
+				currentNode.Status = -1
+				if server != nil {
+					server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: -1})
+					server.BroadcastToNamespace("/", "notify.process.error", map[string]string{currentNode.Id: err.Error()})
+				}
+			} else {
+				currentNode.dumpOutput(currentNode, outputData)
+				currentNode.Status = 2
+				if server != nil {
+					server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: 2})
+				}
 				for _, node := range currentNode.NextNodes {
-					log.Info("找到后续组件")
-					log.Infof("ly--currentnode-afternode---: %s, %s, %s ", currentNode.Id, node.Id, node.PortConnects)
 					wg.Add(1)
 					go node.Run(*node, RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server)
 				}
 			}
 		}
-
 	}
 }
 

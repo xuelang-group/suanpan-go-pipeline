@@ -168,7 +168,7 @@ func (g *Graph) Update(newGraph utils.GraphConfig) {
 	g.nodesInit()
 }
 
-func (g *Graph) Run(inputData map[string]string, id string, extra string, server *socketio.Server) {
+func (g *Graph) Run(inputData map[string]string, id string, extra string, server *socketio.Server, useCache bool) {
 	log.Info("Start To Run Graph.")
 	g.PipelineStatus = 1
 	g.wg = sync.WaitGroup{}
@@ -180,10 +180,14 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 				if data, ok := inputData[strings.Replace(node.Key, "inputData", "in", -1)]; ok {
 					go node.Run(node, components.RequestData{Data: data, ID: id, Extra: extra}, &g.wg, g.stopChan, server)
 				} else {
-					go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
+					if useCache {
+						go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
+					}
 				}
 			} else {
-				go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
+				if len(node.InputData) == 0 {
+					go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
+				}
 			}
 		}
 	}
@@ -218,7 +222,7 @@ func (g *Graph) Stop() {
 func (g *Graph) componentsInit() {
 	files, err := ioutil.ReadDir("configs")
 	if err != nil {
-		log.Error(err.Error()) 
+		log.Error(err.Error())
 	}
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".yml") {
@@ -252,7 +256,7 @@ func (g *Graph) componentsInit() {
 						outPortConfig = &v
 						break
 					}
-				} 
+				}
 				for outputName, outputInfo := range g.NodeInfo.Outputs {
 					outPortConfig.Name = outputInfo.Description["zh_CN"]
 					outPortConfig.Key = outputName
