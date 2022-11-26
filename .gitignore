@@ -19,3 +19,4 @@ package-lock.json
 frontend/package-lock.json
 .DS_Store
 statics
+goPipeline

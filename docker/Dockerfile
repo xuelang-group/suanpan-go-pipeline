@@ -2,11 +2,12 @@ FROM debian:buster-slim
 
 WORKDIR components
 
-COPY goComponents /components
+COPY goPipeline /components
 
 COPY statics /components/statics
 
-RUN chmod +x /components/goComponents && \
+RUN chmod +x /components/goPipeline && \
+    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list && \
     apt update && \
     apt install curl bash -y && \
     rm -rf /var/lib/apt/lists/* && \
