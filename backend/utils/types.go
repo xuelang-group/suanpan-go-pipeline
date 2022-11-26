@@ -54,8 +54,8 @@ type NodePortType struct {
 type Component struct {
 	Type          string      `json:"type"`
 	TypeLabel     string      `json:"typeLabel" yaml:"typeLabel"`
-	Category      string      `json:"category"`
-	CategoryLabel string      `json:"categoryLabel" yaml:"categoryLabel"`
+	Category      string      `json:"category,omitempty"`
+	CategoryLabel string      `json:"categoryLabel,omitempty" yaml:"categoryLabel"`
 	Name          string      `json:"name"`
 	Key           string      `json:"key"`
 	HelpUrl       string      `json:"helpUrl" yaml:"helpUrl"`
@@ -69,8 +69,13 @@ type Parameter struct {
 	Type     string      `json:"type"`
 	Required bool        `json:"required,omitempty"`
 	Default  interface{} `json:"default,omitempty"`
+	Options  []Option    `json:"options,omitempty"`
 }
 
+type Option struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+}
 type Ports struct {
 	In  []Port `json:"in,omitempty"`
 	Out []Port `json:"out,omitempty"`

@@ -1,7 +1,5 @@
 - type: script
   typeLabel: 代码编辑器
-  category:
-  categoryLabel:
   name: Python脚本编辑器
   key: ExecutePythonScript
   supportConfigInPorts: True
