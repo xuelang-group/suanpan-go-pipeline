@@ -1,6 +1,6 @@
 FROM debian:buster-slim
 
-WORKDIR components
+WORKDIR /components
 
 COPY goPipeline /components
 
