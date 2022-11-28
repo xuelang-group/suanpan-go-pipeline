@@ -50,7 +50,7 @@ func (g *Graph) graphInit() {
 	err := storage.FGetObject(g.key, g.path)
 	if err != nil {
 		log.Info("Fail to Load Config File, init with default value...")
-		g.Config = utils.GraphConfig{}
+		g.Config = utils.GraphConfig{Scale: 1, Connectors: []utils.Connector{}, Nodes: []utils.NodeConfig{}}
 	} else {
 		jsonFile, err := os.Open(g.path)
 		if err != nil {
