@@ -34,10 +34,6 @@ func postgresInit(currentNode Node) error {
 }
 
 func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	// if currentNode.InputData == nil {
-	// 	return map[string]interface{}{}, nil
-	// }
-
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
 	db, err := sql.Open("postgres", psqlconn)
 	if err != nil {
@@ -345,7 +341,6 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 						case int:
 							value = strconv.Itoa(v.(int))
 						case int64:
-							//fmt.Println(k, "is int", vv)
 							value = strconv.FormatInt(v.(int64), 10)
 						case float32, float64:
 							value = strconv.FormatFloat(vtype.(float64), 'g', 12, 64)
@@ -373,7 +368,6 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 						case int:
 							value = strconv.Itoa(v.(int))
 						case int64:
-							//fmt.Println(k, "is int", vv)
 							value = strconv.FormatInt(v.(int64), 10)
 						case float32, float64:
 							value = strconv.FormatFloat(vtype.(float64), 'g', 12, 64)

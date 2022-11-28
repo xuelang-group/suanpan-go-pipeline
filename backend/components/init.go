@@ -87,8 +87,6 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 		if len(inputData.Data) > 0 || receiveInputs {
 			currentNode.Status = 1
 			outputData, err := currentNode.main(currentNode, inputData)
-			log.Infof("node complete： %s", currentNode.Id)
-			log.Infof("node output data： %s", outputData)
 			if err != nil {
 				log.Infof("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
 				currentNode.Status = -1
