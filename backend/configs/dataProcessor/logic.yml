@@ -1,0 +1,14 @@
+- type: logicalProcess
+  typeLabel: 逻辑处理
+  name: 数据同步
+  key: DataSync
+  supportConfigInPorts: True
+  supportConfigOutPorts: True
+  helpUrl:
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1

@@ -1,6 +1,7 @@
 package components
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 
@@ -36,8 +37,9 @@ func loadInput(currentNode Node, inputData string) map[string]interface{} {
 		inputFloat, _ := strconv.ParseFloat(inputData, 32)
 		return map[string]interface{}{"out1": inputFloat}
 	case "json":
-		log.Infof("not support json")
-		fallthrough
+		var v interface{}
+		json.Unmarshal([]byte(inputData), &v)
+		return map[string]interface{}{"out1": v}
 	case "csv":
 		log.Infof("not support json")
 		fallthrough
