@@ -62,8 +62,12 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		}
 		tableCols = append(tableCols, tableCol)
 	}
-
-	tableQueryStr := fmt.Sprintf("SELECT * FROM %s.%s", currentNode.Config["schema"].(string), currentNode.Config["table"].(string))
+	tableQueryStr := ""
+	if len(currentNode.Config["sql"].(string)) == 0 {
+		tableQueryStr = fmt.Sprintf("SELECT * FROM %s.%s", currentNode.Config["schema"].(string), currentNode.Config["table"].(string))
+	} else {
+		tableQueryStr = currentNode.Config["sql"].(string)
+	}
 	rows, err := db.Query(tableQueryStr)
 	if err != nil {
 		log.Infof("数据表检索失败")

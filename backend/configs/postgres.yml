@@ -38,6 +38,10 @@
       name: schema
       type: inputString
       default: public
+    - key: sql
+      name: sql
+      type: inputString
+      default: ""
   ports:
     in:
       - id: in1
