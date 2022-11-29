@@ -50,6 +50,8 @@ func (c *Node) Init(nodeType string) {
 		c.main = streamOutMain
 	case "JsonExtractor":
 		c.main = jsonExtractorMain
+	case "DataSync":
+		c.main = dataSyncMain
 	case "ExecutePythonScript":
 		c.main = pyScriptMain
 	case "PostgresReader":

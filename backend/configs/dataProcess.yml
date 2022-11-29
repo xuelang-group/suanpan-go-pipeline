@@ -1,19 +1,29 @@
-- type: dataProcess
-  typeLabel: 数据处理
-  category: jsonProcess
-  categoryLabel: Json处理
-  name: 数据提取
-  key: JsonExtractor
+- type: process
+  typeLabel: 逻辑处理
+  name: 数据同步
+  key: DataSync
+  supportConfigInPorts: True
+  supportConfigOutPorts: True
   helpUrl:
   parameters:
-    - key: field
-      name: 字段名称
-      type: inputString
+    - key: empty
+      name: 同步后清空端口数据
+      type: checkbox
       required: True
-  ports:
-    in:
-      - id: in1
-        name: in1
-    out:
-      - id: out1
-        name: out1
+      default: True
+    - key: triggerPort
+      name: 触发端口
+      type: inputString
+      default: ""
+    - key: inPorts
+      name: 输入端口
+      type: ports
+      default:
+        - id: "in1"
+          name: "in1"
+    - key: outPorts
+      name: 输出端口
+      type: ports
+      default:
+        - id: "out1"
+          name: "out1"

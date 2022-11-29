@@ -10,20 +10,16 @@
       name: Python脚本
       type: inputPythonScript
       required: True
-      default: "# The script MUST contain a function named run\n# which is the entry point for this module.\n# The entry point function can contain several input arguments:\n#   Param<in1>: a pandas.DataFrame\n#   Param<in2>: a pandas.DataFrame\ndef run(in1 = None, in2 = None):\n    return in1+in2, in1-in2\n"
+      default: "# 输入端口数据通过inputs[n]来引用n从0开始:\n#   输处端口数据放入outputs，outputs为列表，按端口索引放入数据\n#   outputs[0] = int(inputs[0])+1\n"
     - key: inPorts
       name: 输入端口
       type: ports
       default:
         - id: "in1"
           name: "in1"
-        - id: "in2"
-          name: "in2"
     - key: outPorts
       name: 输出端口
       type: ports
       default:
         - id: "out1"
           name: "out1"
-        - id: "out2"
-          name: "out2"
