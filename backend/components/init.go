@@ -1,7 +1,6 @@
 package components
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 
@@ -68,10 +67,9 @@ func (c *Node) Init(nodeType string) {
 
 func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server) {
 	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Caught:", r)
+		if err := recover(); err != nil {
+			log.Errorf("Caught exception: %s", err)
 		}
-		// panic("catch me")
 	}()
 	defer wg.Done()
 	select {
