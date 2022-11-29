@@ -193,12 +193,12 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 		columns_type := df.Types()
 		tableScheamArr := make([]string, 0)
 		for i := 0; i < len(columns); i++ {
-			if strings.Compare(string(columns_type[i]), "int") == 0 || strings.Compare(string(columns_type[i]), "float") == 0 || strings.Compare(string(columns_type[i]), "boolean") == 0 {
-				tableScheamArr = append(tableScheamArr, string(columns[i])+" "+string(columns_type[i]))
-			} else {
-				columns_type[i] = "varchar"
-				tableScheamArr = append(tableScheamArr, string(columns[i])+" "+string(columns_type[i]))
-			}
+			// if strings.Compare(string(columns_type[i]), "int") == 0 || strings.Compare(string(columns_type[i]), "float") == 0 || strings.Compare(string(columns_type[i]), "boolean") == 0 {
+			// 	tableScheamArr = append(tableScheamArr, string(columns[i])+" "+string(columns_type[i]))
+			// } else {
+			columns_type[i] = "varchar"
+			tableScheamArr = append(tableScheamArr, string(columns[i])+" "+string(columns_type[i]))
+			//}
 
 		}
 		tableScheamStr := strings.Join(tableScheamArr, ",")
@@ -232,7 +232,9 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 					var tmpStr string
 					var rowTmpStr string
 					row := dfToMaps[i]
+					//log.Infof("ly---data row is  %s", row)
 					for k, v := range row {
+						//log.Infof("ly---v.(type) is  k %s, v is %s", k, v)
 						var value string
 						switch vtype := v.(type) {
 						case int:
@@ -241,8 +243,10 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 							value = strconv.FormatInt(v.(int64), 10)
 						case float32, float64:
 							value = strconv.FormatFloat(vtype.(float64), 'g', 12, 64)
+						case nil:
+							value = "''"
 						default:
-							value = "`" + v.(string) + "`"
+							value = "'" + v.(string) + "'"
 
 						}
 						tmpNameValueMap[k] = value
@@ -269,6 +273,8 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 							value = strconv.FormatInt(v.(int64), 10)
 						case float32, float64:
 							value = strconv.FormatFloat(vtype.(float64), 'g', 12, 64)
+						case nil:
+							value = "''"
 						default:
 							value = "'" + v.(string) + "'"
 						}
@@ -281,15 +287,30 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 					tableInsertArr = append(tableInsertArr, rowTmpStr)
 				}
 			}
-			tableInsertValues = strings.Join(tableInsertArr, ",")
-			colnames := df.Names()
-			tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(colnames, ","), tableInsertValues)
-			rows, err := db.Query(tableInsertStr)
-			defer rows.Close()
-			if err != nil {
-				log.Infof("覆盖写入表失败")
-				return
+			if len(tableInsertArr) > 0 {
+				tableInsertValues = strings.Join(tableInsertArr, ",")
+				colnames := df.Names()
+				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(colnames, ","), tableInsertValues)
+				// log.Infof("ly----tableInsertStr ： %s", tableInsertStr)
+				// log.Infof("ly----iter ： %s", iter)
+				rows, err := db.Query(tableInsertStr)
+				defer rows.Close()
+				if err != nil {
+					log.Infof("覆盖写入表失败")
+					return
+				}
 			}
+			// tableInsertValues = strings.Join(tableInsertArr, ",")
+			// colnames := df.Names()
+			// tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(colnames, ","), tableInsertValues)
+			// // log.Infof("ly----tableInsertStr ： %s", tableInsertStr)
+			// log.Infof("ly----iter ： %s", iter)
+			// rows, err := db.Query(tableInsertStr)
+			// defer rows.Close()
+			// if err != nil {
+			// 	log.Infof("覆盖写入表失败")
+			// 	return
+			// }
 		}
 
 	} else {
@@ -348,6 +369,8 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 							value = strconv.FormatInt(v.(int64), 10)
 						case float32, float64:
 							value = strconv.FormatFloat(vtype.(float64), 'g', 12, 64)
+						case nil:
+							value = "''"
 						default:
 							value = "'" + v.(string) + "'"
 
@@ -375,6 +398,8 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 							value = strconv.FormatInt(v.(int64), 10)
 						case float32, float64:
 							value = strconv.FormatFloat(vtype.(float64), 'g', 12, 64)
+						case nil:
+							value = "''"
 						default:
 							value = "'" + v.(string) + "'"
 						}
@@ -387,13 +412,17 @@ func csvToSql(currentNode Node, df dataframe.DataFrame, tablename string, schema
 					tableInsertArr = append(tableInsertArr, rowTmpStr)
 				}
 			}
-			tableInsertValues = strings.Join(tableInsertArr, ",")
-			tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
-			rows, err := db.Query(tableInsertStr)
-			defer rows.Close()
-			if err != nil {
-				log.Infof("追加写入表失败")
-				return
+			if len(tableInsertArr) > 0 {
+				tableInsertValues = strings.Join(tableInsertArr, ",")
+				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
+				// log.Infof("ly----tableInsertStr ： %s", tableInsertStr)
+				// log.Infof("ly----iter ： %s", iter)
+				rows, err := db.Query(tableInsertStr)
+				defer rows.Close()
+				if err != nil {
+					log.Infof("追加写入表失败")
+					return
+				}
 			}
 		}
 	}
