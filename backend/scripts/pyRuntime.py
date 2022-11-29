@@ -2,10 +2,12 @@ import json
 import argparse
 import pandas
 
+
 functionSting = '''
 def runScript(inputs):
+    outputs = []
     %s
-    return outputs
+    return run(*inputs)
 '''
 
 def defaultLoad(x):
@@ -48,7 +50,7 @@ def run(inputs=None, script=""):
         loadedInputs.append(loadMethods[input["type"]](input["data"]))
     outputs = runScript(loadedInputs)
     dumpedOutputs = []
-    for output in outputs:
+    for output in outputs.getAll():
         if type(output) in dumpMethods:
             dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
         else:
