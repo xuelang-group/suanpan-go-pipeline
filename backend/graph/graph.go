@@ -93,7 +93,14 @@ func (g *Graph) nodesInit() {
 		node.Config = params
 		node.InputData = make(map[string]interface{})
 		node.OutputData = make(map[string]interface{})
-		if node.Key == "ExecutePythonScript" {
+		supportPortConfig := []string{"ExecutePythonScript", "DataSync"}
+		nodeSupportPortConfig := false
+		for _, key := range supportPortConfig {
+			if key == node.Key {
+				nodeSupportPortConfig = true
+			}
+		}
+		if nodeSupportPortConfig {
 			for _, port := range node.Config["inPorts"].([]interface{}) {
 				port := port.(map[string]interface{})
 				node.InputData[port["id"].(string)] = nil
