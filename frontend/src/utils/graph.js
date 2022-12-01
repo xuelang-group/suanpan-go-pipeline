@@ -158,7 +158,7 @@ export function generateNode(nodeData, {x, y, uuid}) {
   nodeData.ports.in = nodeData.ports.in || []
   nodeData.ports.out = nodeData.ports.out || []
 
-  if(nodeData.key === 'ExecutePythonScript' || nodeData.key === 'DataProcess') {
+  if(nodeData.key === 'ExecutePythonScript' || nodeData.key === 'DataSync') {
     for(let i = 0, len = nodeData.parameters.length; i < len; i++) {
       let param = nodeData.parameters[i]
       if((param.key === 'inPorts') && (Array.isArray(param.value))) {

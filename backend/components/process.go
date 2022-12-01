@@ -5,6 +5,7 @@ func jsonExtractorMain(currentNode Node, inputData RequestData) (map[string]inte
 }
 
 func dataSyncMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	log.Info("start data sync !!!")
 	result := make(map[string]interface{})
 	if currentNode.Config["triggerPort"].(string) == "" {
 		if currentNode.Config["empty"].(bool) {
@@ -16,7 +17,7 @@ func dataSyncMain(currentNode Node, inputData RequestData) (map[string]interface
 			}
 			if recieveAll {
 				for port, data := range currentNode.InputData {
-					result[port] = data
+					result[strings.Replace(port, "in", "out", -1)] = data
 				}
 				for port := range currentNode.InputData {
 					currentNode.InputData[port] = nil
@@ -31,7 +32,7 @@ func dataSyncMain(currentNode Node, inputData RequestData) (map[string]interface
 			}
 			if recieveAll {
 				for port, data := range currentNode.InputData {
-					result[port] = data
+					result[strings.Replace(port, "in", "out", -1)] = data
 				}
 			}
 		}
@@ -45,7 +46,7 @@ func dataSyncMain(currentNode Node, inputData RequestData) (map[string]interface
 			}
 			if recieveAll && currentNode.InputData[currentNode.Config["triggerPort"].(string)] != nil {
 				for port, data := range currentNode.InputData {
-					result[port] = data
+					result[strings.Replace(port, "in", "out", -1)] = data
 				}
 				for port := range currentNode.InputData {
 					currentNode.InputData[port] = nil
@@ -60,11 +61,11 @@ func dataSyncMain(currentNode Node, inputData RequestData) (map[string]interface
 			}
 			if recieveAll && currentNode.InputData[currentNode.Config["triggerPort"].(string)] != nil {
 				for port, data := range currentNode.InputData {
-					result[port] = data
+					result[strings.Replace(port, "in", "out", -1)] = data
 				}
 			}
 		}
 	}
-
+	// log.Infof("ly  datasync result %s ", result)
 	return result, nil
 }
