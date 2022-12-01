@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-gota/gota/dataframe"
 	_ "github.com/lib/pq"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -99,10 +98,6 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 
 		records = append(records, data)
 	}
-	df := dataframe.LoadRecords(
-		records,
-		dataframe.DetectTypes(true),
-	)
 	tmpPath := "data.csv"
 	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/out1", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId)
 	os.Remove(tmpPath)
@@ -111,8 +106,12 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		log.Error("无法创建临时文件")
 		errors.New("无法创建临时文件")
 	}
-	log.Infof("node df path is  %s, tmpKey is %s", file, tmpKey)
-	df.WriteCSV(file)
+	w := csv.NewWriter(file)
+	err = w.WriteAll(records)
+	if err != nil {
+		log.Error("无法写入csv数据")
+		return map[string]interface{}{}, nil
+	}
 	storage.FPutObject(fmt.Sprintf("%s/data.csv", tmpKey), tmpPath)
 
 	return map[string]interface{}{"out1": tmpKey}, nil
@@ -161,14 +160,12 @@ func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]int
 			log.Errorf("Can not remove csv file: %s, with error: %s", tmpPath, err.Error())
 		}
 	}()
-	log.Infof(" csv records !!!")
 	ReadCsvToSql(csvFile, currentNode)
 	return map[string]interface{}{"out1": "true"}, nil
 }
 func ReadCsvToSql(r io.Reader, currentNode Node) {
 	csvReader := csv.NewReader(r)
 	records, err := csvReader.ReadAll()
-	// log.Infof("ly---- csv records  is %s", records) //[[number name] [12 23] [3 2] [3 7] [4 6]]
 	if err != nil {
 		return
 	}
@@ -202,7 +199,6 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 		}
 		tableScheamStr := strings.Join(tableScheamArr, ",")
 		tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableScheamStr)
-		// log.Infof("ly----tableCreateStr ： %s", tableCreateStr)
 
 		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
 		drop_rows, err := db.Query(tableDropStr)
@@ -250,8 +246,6 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(columns, ","), tableInsertValues)
-				// log.Infof("ly----tableInsertStr ： %s", tableInsertStr)
-				log.Infof("ly----iter ： %s", iter)
 				rows, err := db.Query(tableInsertStr)
 				defer rows.Close()
 				if err != nil {
@@ -284,12 +278,10 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 		for _, col := range tableCols {
 			headers = append(headers, col.Name)
 		}
-		// log.Infof("ly----len headers  ： %s", len(headers))
 		headersTypes := make([]string, 0)
 		for _, col := range tableCols {
 			headersTypes = append(headersTypes, col.Type)
 		}
-		// log.Infof("ly----headersTypes  ： %s", headersTypes)
 		if strings.Compare(mode, "clearAndAppend") == 0 {
 			log.Infof("开始清空并追加")
 			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, tablename)
@@ -344,8 +336,6 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
-				//log.Infof("ly----tableInsertStr ： %s", tableInsertStr)
-				log.Infof("ly----iter ： %s", iter)
 				rows, err := db.Query(tableInsertStr)
 				defer rows.Close()
 				if err != nil {
