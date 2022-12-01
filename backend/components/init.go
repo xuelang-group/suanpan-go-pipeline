@@ -29,7 +29,7 @@ type Node struct {
 	loadInput     func(currentNode Node, inputData RequestData) error
 	main          func(currentNode Node, inputData RequestData) (map[string]interface{}, error)
 	initNode      func(currentNode Node) error
-	Status        int // 0: stoped 1： running 2： finished -1：error
+	Status        int // 0: stoped 1： running -1：error
 }
 
 type RequestData struct {
@@ -72,8 +72,8 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 		if err := recover(); err != nil {
 			log.Errorf("Caught exception: %s", err)
 		}
+		wg.Done()
 	}()
-	defer wg.Done()
 	select {
 	case <-stopChan:
 		log.Info("Recive stop event")
@@ -96,9 +96,9 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 				}
 			} else {
 				currentNode.dumpOutput(currentNode, outputData)
-				currentNode.Status = 2
+				currentNode.Status = 0
 				if server != nil {
-					server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: 2})
+					server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: 0})
 				}
 				for _, node := range currentNode.NextNodes {
 					wg.Add(1)

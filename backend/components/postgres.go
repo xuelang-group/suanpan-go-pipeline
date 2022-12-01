@@ -194,7 +194,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 		tableScheamArr := make([]string, 0)
 		for i := 0; i < len(columns); i++ {
 			// columns_type[i] = "varchar"
-			tableScheamArr = append(tableScheamArr, string(columns[i])+" "+"varchar")
+			tableScheamArr = append(tableScheamArr, "\""+string(columns[i])+"\""+" "+"varchar")
 
 		}
 		tableScheamStr := strings.Join(tableScheamArr, ",")
