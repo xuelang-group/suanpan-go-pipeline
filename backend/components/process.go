@@ -1,11 +1,14 @@
 package components
 
+import (
+	"strings"
+)
+
 func jsonExtractorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	return map[string]interface{}{}, nil
 }
 
 func dataSyncMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	log.Info("start data sync !!!")
 	result := make(map[string]interface{})
 	if currentNode.Config["triggerPort"].(string) == "" {
 		if currentNode.Config["empty"].(bool) {
@@ -66,6 +69,5 @@ func dataSyncMain(currentNode Node, inputData RequestData) (map[string]interface
 			}
 		}
 	}
-	// log.Infof("ly  datasync result %s ", result)
 	return result, nil
 }
