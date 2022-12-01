@@ -182,17 +182,19 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 	g.stopChan = make(chan bool)
 	for _, node := range g.Nodes {
 		if len(node.PreviousNodes) == 0 {
-			g.wg.Add(1)
 			if strings.HasPrefix(node.Key, "in") {
 				if data, ok := inputData[strings.Replace(node.Key, "inputData", "in", -1)]; ok {
+					g.wg.Add(1)
 					go node.Run(node, components.RequestData{Data: data, ID: id, Extra: extra}, &g.wg, g.stopChan, server)
 				} else {
 					if useCache {
+						g.wg.Add(1)
 						go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
 					}
 				}
 			} else {
 				if len(node.InputData) == 0 {
+					g.wg.Add(1)
 					go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
 				}
 			}

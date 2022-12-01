@@ -227,7 +227,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 					var rowTmpStr string
 					recordsArr := make([]string, 0)
 					for _, col := range records[i] {
-						recordsArr = append(recordsArr, "'"+col+"'")
+						recordsArr = append(recordsArr, "'"+strings.ReplaceAll(col, "'", "''")+"'")
 					}
 					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
 					tableInsertArr = append(tableInsertArr, rowTmpStr)
@@ -237,7 +237,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 					var rowTmpStr string
 					recordsArr := make([]string, 0)
 					for _, col := range records[i] {
-						recordsArr = append(recordsArr, "'"+col+"'")
+						recordsArr = append(recordsArr, "'"+strings.ReplaceAll(col, "'", "''")+"'")
 					}
 					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
 					tableInsertArr = append(tableInsertArr, rowTmpStr)
@@ -245,7 +245,12 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 			}
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
-				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(columns, ","), tableInsertValues)
+				tableColumns := make([]string, 0)
+				for i := 0; i < len(columns); i++ {
+					tableColumns = append(tableColumns, "\""+string(columns[i])+"\"")
+
+				}
+				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(tableColumns, ","), tableInsertValues)
 				rows, err := db.Query(tableInsertStr)
 				defer rows.Close()
 				if err != nil {
@@ -276,7 +281,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 		}
 		headers := make([]string, 0)
 		for _, col := range tableCols {
-			headers = append(headers, col.Name)
+			headers = append(headers, "\""+col.Name+"\"")
 		}
 		headersTypes := make([]string, 0)
 		for _, col := range tableCols {
@@ -310,7 +315,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 						} else if len(records[i][ctype]) > 0 && strings.Compare(headersTypes[ctype], "integer") == 0 {
 							recordsArr = append(recordsArr, "'"+strings.Split(records[i][ctype], ".")[0]+"'")
 						} else {
-							recordsArr = append(recordsArr, "'"+records[i][ctype]+"'")
+							recordsArr = append(recordsArr, "'"+strings.ReplaceAll(records[i][ctype], "'", "''")+"'")
 						}
 					}
 					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
@@ -326,7 +331,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 						} else if len(records[i][ctype]) > 0 && strings.Compare(headersTypes[ctype], "integer") == 0 {
 							recordsArr = append(recordsArr, "'"+strings.Split(records[i][ctype], ".")[0]+"'")
 						} else {
-							recordsArr = append(recordsArr, "'"+records[i][ctype]+"'")
+							recordsArr = append(recordsArr, "'"+strings.ReplaceAll(records[i][ctype], "'", "''")+"'")
 						}
 					}
 					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
