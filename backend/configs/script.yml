@@ -10,7 +10,7 @@
       name: Python脚本
       type: inputPythonScript
       required: True
-      default: "# 输入端口数据通过inputs[n]来引用n从0开始:\n# 输处端口数据放入outputs，outputs为列表，按端口索引放入数据\n# outputs[0] = int(inputs[0])+1\n"
+      default: "# 输入端口数据通过inputs[n]来引用n从0开始:\n# 输处端口数据放入outputs，outputs为列表，按端口顺序放入数据\n# outputs.append(int(inputs[0])+1)\n"
     - key: inPorts
       name: 输入端口
       type: ports
