@@ -3,7 +3,6 @@ package components
 import (
 	"database/sql"
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -75,10 +74,12 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	}
 	records := make([][]string, 0)
 	headers := make([]string, 0)
+	headers = append(headers, "indexCol")
 	for _, col := range tableCols {
 		headers = append(headers, col.Name)
 	}
 	records = append(records, headers)
+	recordNum := 0
 	defer rows.Close()
 	for rows.Next() {
 		record := make([]sql.NullString, len(tableCols))
@@ -92,10 +93,11 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 			return map[string]interface{}{}, nil
 		}
 		data := make([]string, 0)
+		data = append(data, strconv.FormatInt(int64(recordNum), 10))
 		for i := range record {
 			data = append(data, record[i].String)
 		}
-
+		recordNum += 1
 		records = append(records, data)
 	}
 	tmpPath := "data.csv"
@@ -104,7 +106,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	file, err := os.Create(tmpPath)
 	if err != nil {
 		log.Error("无法创建临时文件")
-		errors.New("无法创建临时文件")
+		return map[string]interface{}{}, nil
 	}
 	w := csv.NewWriter(file)
 	err = w.WriteAll(records)
@@ -122,21 +124,21 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 	db, err := sql.Open("postgres", psqlconn)
 	if err != nil {
 		log.Infof("数据库连接失败，请检查配置")
-		return map[string]interface{}{"out1": "false"}, nil
+		return map[string]interface{}{}, nil
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
 		log.Infof("数据库测试连接失败，请检查配置")
-		return map[string]interface{}{"out1": "false"}, nil
+		return map[string]interface{}{}, nil
 	}
 	tableQueryStr := currentNode.Config["sql"].(string)
 	rows, err := db.Query(tableQueryStr)
-	defer rows.Close()
 	if err != nil {
 		log.Infof("数据表执行sql语句失败")
-		return map[string]interface{}{"out1": "false"}, nil
+		return map[string]interface{}{}, nil
 	}
-	return map[string]interface{}{"out1": "true"}, nil
+	defer rows.Close()
+	return map[string]interface{}{"out1": "success"}, nil
 }
 func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	args := config.GetArgs()
@@ -146,12 +148,12 @@ func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]int
 	storageErr := storage.FGetObject(tmpKey, tmpPath)
 	if storageErr != nil {
 		log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
-		return map[string]interface{}{"out1": tmpKey}, nil
+		return map[string]interface{}{}, nil
 	}
 	csvFile, err := os.Open(tmpPath)
 	if err != nil {
 		log.Errorf("Can not open csv file: %s, with error: %s", tmpPath, err.Error())
-		return map[string]interface{}{"out1": tmpKey}, nil
+		return map[string]interface{}{}, nil
 	}
 	defer func() {
 		csvFile.Close()
@@ -160,63 +162,67 @@ func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]int
 			log.Errorf("Can not remove csv file: %s, with error: %s", tmpPath, err.Error())
 		}
 	}()
-	ReadCsvToSql(csvFile, currentNode)
-	return map[string]interface{}{"out1": "true"}, nil
+	csvToSqlErr := ReadCsvToSql(csvFile, currentNode)
+	if csvToSqlErr != nil {
+		log.Error("未能正常写入数据库")
+		return map[string]interface{}{}, nil
+	}
+	return map[string]interface{}{"out1": "success"}, nil
 }
-func ReadCsvToSql(r io.Reader, currentNode Node) {
+func ReadCsvToSql(r io.Reader, currentNode Node) error {
 	csvReader := csv.NewReader(r)
 	records, err := csvReader.ReadAll()
 	if err != nil {
-		return
+		return err
 	}
 	//链接数据库
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
 	db, err := sql.Open("postgres", psqlconn)
 	if err != nil {
 		log.Infof("数据库连接失败，请检查配置")
-		return
+		return err
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
 		log.Infof("数据库测试连接失败，请检查配置")
-		return
+		return err
 	}
 
 	tablename := currentNode.Config["table"].(string)
 	schema := currentNode.Config["databaseChoose"].(string)
-	chunksize := currentNode.Config["chunksize"].(string)
+	chunksizeRaw := currentNode.Config["chunksize"].(string)
 	mode := currentNode.Config["mode"].(string)
+	chunksize, err := strconv.Atoi(chunksizeRaw)
+	if err != nil {
+		log.Infof("chunksize设置非数值")
+		return err
+	}
 
 	if strings.Compare(mode, "replace") == 0 {
 		//新建表
 		columns := records[0]
-		// columns_type := make([]string, 0)
 		tableScheamArr := make([]string, 0)
-		for i := 0; i < len(columns); i++ {
-			// columns_type[i] = "varchar"
+		for i := 1; i < len(columns); i++ {
 			tableScheamArr = append(tableScheamArr, "\""+string(columns[i])+"\""+" "+"varchar")
 
 		}
 		tableScheamStr := strings.Join(tableScheamArr, ",")
 		tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableScheamStr)
-
 		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
 		drop_rows, err := db.Query(tableDropStr)
-		defer drop_rows.Close()
 		if err != nil {
 			log.Infof("删除原表失败")
-			return
+			return err
 		}
+		defer drop_rows.Close()
 		create_rows, err := db.Query(tableCreateStr)
-		defer create_rows.Close()
 		if err != nil {
 			log.Infof("创建表失败")
-			return
+			return err
 		}
+		defer create_rows.Close()
 		//插入数据
-
 		l := len(records) - 1
-		chunksize, err := strconv.Atoi(chunksize)
 		n := l/chunksize + 1
 
 		for iter := 0; iter < n; iter++ {
@@ -226,8 +232,10 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 				for i := iter*chunksize + 1; i < chunksize*(iter+1)+1; i++ {
 					var rowTmpStr string
 					recordsArr := make([]string, 0)
-					for _, col := range records[i] {
-						recordsArr = append(recordsArr, "'"+strings.ReplaceAll(col, "'", "''")+"'")
+					for colIdx, col := range records[i] {
+						if colIdx != 0 {
+							recordsArr = append(recordsArr, "'"+strings.ReplaceAll(col, "'", "''")+"'")
+						}
 					}
 					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
 					tableInsertArr = append(tableInsertArr, rowTmpStr)
@@ -236,8 +244,10 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 				for i := iter*chunksize + 1; i < l+1; i++ {
 					var rowTmpStr string
 					recordsArr := make([]string, 0)
-					for _, col := range records[i] {
-						recordsArr = append(recordsArr, "'"+strings.ReplaceAll(col, "'", "''")+"'")
+					for colIdx, col := range records[i] {
+						if colIdx != 0 {
+							recordsArr = append(recordsArr, "'"+strings.ReplaceAll(col, "'", "''")+"'")
+						}
 					}
 					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
 					tableInsertArr = append(tableInsertArr, rowTmpStr)
@@ -246,17 +256,17 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableColumns := make([]string, 0)
-				for i := 0; i < len(columns); i++ {
+				for i := 1; i < len(columns); i++ {
 					tableColumns = append(tableColumns, "\""+string(columns[i])+"\"")
 
 				}
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(tableColumns, ","), tableInsertValues)
 				rows, err := db.Query(tableInsertStr)
-				defer rows.Close()
 				if err != nil {
 					log.Infof("覆盖写入表失败")
-					return
+					return err
 				}
+				defer rows.Close()
 			}
 		}
 
@@ -266,7 +276,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 		colRows, err := db.Query(tableColumnStr)
 		if err != nil {
 			log.Infof("数据表检索失败, 请确认要写入的表是否存在")
-			return
+			return err
 		}
 		tableCols := make([]pgDataCol, 0)
 		defer colRows.Close()
@@ -275,7 +285,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 			err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 			if err != nil {
 				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
-				return
+				return err
 			}
 			tableCols = append(tableCols, tableCol)
 		}
@@ -287,19 +297,28 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 		for _, col := range tableCols {
 			headersTypes = append(headersTypes, col.Type)
 		}
+		headerToRecords := make(map[string]int)
+		for _, header := range headers {
+			colIdx := -1
+			for colNum, col := range records[0] {
+				if col == header {
+					colIdx = colNum
+				}
+			}
+			headerToRecords[header] = colIdx
+		}
 		if strings.Compare(mode, "clearAndAppend") == 0 {
 			log.Infof("开始清空并追加")
 			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, tablename)
 			rows, err := db.Query(tableClearStr)
-			defer rows.Close()
 			if err != nil {
 				log.Infof("清空表失败")
-				return
+				return err
 			}
+			defer rows.Close()
 		}
 		//插入数据
 		l := len(records) - 1
-		chunksize, err := strconv.Atoi(chunksize)
 		n := l/chunksize + 1
 		for iter := 0; iter < n; iter++ {
 			var tableInsertValues string
@@ -308,14 +327,18 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 				for i := iter*chunksize + 1; i < chunksize*(iter+1)+1; i++ {
 					var rowTmpStr string
 					recordsArr := make([]string, 0)
-
 					for ctype := 0; ctype < len(headers); ctype++ {
-						if len(records[i][ctype]) == 0 && strings.Compare(headersTypes[ctype], "character varying") != 0 {
-							recordsArr = append(recordsArr, "NULL")
-						} else if len(records[i][ctype]) > 0 && strings.Compare(headersTypes[ctype], "integer") == 0 {
-							recordsArr = append(recordsArr, "'"+strings.Split(records[i][ctype], ".")[0]+"'")
+						if headerToRecords[headers[ctype]] != -1 {
+							recordIdx := headerToRecords[headers[ctype]]
+							if len(records[i][recordIdx]) == 0 && strings.Compare(headersTypes[ctype], "character varying") != 0 {
+								recordsArr = append(recordsArr, "NULL")
+							} else if len(records[i][recordIdx]) > 0 && strings.Compare(headersTypes[ctype], "integer") == 0 {
+								recordsArr = append(recordsArr, "'"+strings.Split(records[i][recordIdx], ".")[0]+"'")
+							} else {
+								recordsArr = append(recordsArr, "'"+strings.ReplaceAll(records[i][recordIdx], "'", "''")+"'")
+							}
 						} else {
-							recordsArr = append(recordsArr, "'"+strings.ReplaceAll(records[i][ctype], "'", "''")+"'")
+							recordsArr = append(recordsArr, "NULL")
 						}
 					}
 					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
@@ -326,12 +349,17 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 					var rowTmpStr string
 					recordsArr := make([]string, 0)
 					for ctype := 0; ctype < len(headers); ctype++ {
-						if len(records[i][ctype]) == 0 && strings.Compare(headersTypes[ctype], "character varying") != 0 {
-							recordsArr = append(recordsArr, "NULL")
-						} else if len(records[i][ctype]) > 0 && strings.Compare(headersTypes[ctype], "integer") == 0 {
-							recordsArr = append(recordsArr, "'"+strings.Split(records[i][ctype], ".")[0]+"'")
+						if headerToRecords[headers[ctype]] != -1 {
+							recordIdx := headerToRecords[headers[ctype]]
+							if len(records[i][recordIdx]) == 0 && strings.Compare(headersTypes[ctype], "character varying") != 0 {
+								recordsArr = append(recordsArr, "NULL")
+							} else if len(records[i][recordIdx]) > 0 && strings.Compare(headersTypes[ctype], "integer") == 0 {
+								recordsArr = append(recordsArr, "'"+strings.Split(records[i][recordIdx], ".")[0]+"'")
+							} else {
+								recordsArr = append(recordsArr, "'"+strings.ReplaceAll(records[i][recordIdx], "'", "''")+"'")
+							}
 						} else {
-							recordsArr = append(recordsArr, "'"+strings.ReplaceAll(records[i][ctype], "'", "''")+"'")
+							recordsArr = append(recordsArr, "NULL")
 						}
 					}
 					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
@@ -342,13 +370,13 @@ func ReadCsvToSql(r io.Reader, currentNode Node) {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
 				rows, err := db.Query(tableInsertStr)
-				defer rows.Close()
 				if err != nil {
 					log.Infof("追加写入表失败")
-					return
+					return err
 				}
+				defer rows.Close()
 			}
 		}
 	}
-	return
+	return nil
 }
