@@ -301,7 +301,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		for _, header := range headers {
 			colIdx := -1
 			for colNum, col := range records[0] {
-				if col == header {
+				if "\""+col+"\"" == header {
 					colIdx = colNum
 				}
 			}
