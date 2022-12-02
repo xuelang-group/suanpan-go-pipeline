@@ -50,7 +50,7 @@ def run(inputs=None, script=""):
         loadedInputs.append(loadMethods[input["type"]](input["data"]))
     outputs = runScript(loadedInputs)
     dumpedOutputs = []
-    for output in outputs.getAll():
+    for output in outputs:
         if type(output) in dumpMethods:
             dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
         else:
