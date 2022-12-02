@@ -7,7 +7,7 @@ functionSting = '''
 def runScript(inputs):
     outputs = []
     %s
-    return run(*inputs)
+    return outputs
 '''
 
 def defaultLoad(x):
