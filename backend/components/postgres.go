@@ -44,23 +44,23 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		log.Infof("数据库测试连接失败，请检查配置")
 		return map[string]interface{}{}, nil
 	}
-	tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", currentNode.Config["table"].(string), currentNode.Config["schema"].(string))
-	colRows, err := db.Query(tableColumnStr)
-	if err != nil {
-		log.Infof("数据表检索失败")
-		return map[string]interface{}{}, nil
-	}
+	// tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", currentNode.Config["table"].(string), currentNode.Config["schema"].(string))
+	// colRows, err := db.Query(tableColumnStr)
+	// if err != nil {
+	// 	log.Infof("数据表检索失败")
+	// 	return map[string]interface{}{}, nil
+	// }
 	tableCols := make([]pgDataCol, 0)
-	defer colRows.Close()
-	for colRows.Next() {
-		var tableCol pgDataCol
-		err = colRows.Scan(&tableCol.Name, &tableCol.Type)
-		if err != nil {
-			log.Infof("数据表检索失败")
-			return map[string]interface{}{}, nil
-		}
-		tableCols = append(tableCols, tableCol)
-	}
+	// defer colRows.Close()
+	// for colRows.Next() {
+	// 	var tableCol pgDataCol
+	// 	err = colRows.Scan(&tableCol.Name, &tableCol.Type)
+	// 	if err != nil {
+	// 		log.Infof("数据表检索失败")
+	// 		return map[string]interface{}{}, nil
+	// 	}
+	// 	tableCols = append(tableCols, tableCol)
+	// }
 	tableQueryStr := ""
 	if len(currentNode.Config["sql"].(string)) == 0 {
 		tableQueryStr = fmt.Sprintf("SELECT * FROM %s.%s", currentNode.Config["schema"].(string), currentNode.Config["table"].(string))
@@ -71,6 +71,20 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	if err != nil {
 		log.Infof("数据表检索失败")
 		return map[string]interface{}{}, nil
+	}
+	columnNames, err := rows.Columns()
+	if err != nil {
+		log.Info("查询数据表结构失败")
+		return map[string]interface{}{}, nil
+	}
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		log.Info("查询数据表类型失败")
+		return map[string]interface{}{}, nil
+	}
+	for i, col := range columnNames {
+		tableCol := pgDataCol{Name: col, Type: columnTypes[i].ScanType().String()}
+		tableCols = append(tableCols, tableCol)
 	}
 	records := make([][]string, 0)
 	headers := make([]string, 0)
