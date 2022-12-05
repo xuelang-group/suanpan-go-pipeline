@@ -112,7 +112,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		}
 		err = rows.Scan(recordP...)
 		if err != nil {
-			log.Infof("数据表检索失败")
+			log.Infof("数据表数据检索失败")
 			return map[string]interface{}{}, nil
 		}
 		data := make([]string, 0)
