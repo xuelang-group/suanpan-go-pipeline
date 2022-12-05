@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
@@ -83,7 +84,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		return map[string]interface{}{}, nil
 	}
 	for i, col := range columnNames {
-		tableCol := pgDataCol{Name: col, Type: columnTypes[i].ScanType().String()}
+		tableCol := pgDataCol{Name: col, Type: columnTypes[i].DatabaseTypeName()}
 		tableCols = append(tableCols, tableCol)
 	}
 	records := make([][]string, 0)
@@ -96,7 +97,15 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	recordNum := 0
 	defer rows.Close()
 	for rows.Next() {
-		record := make([]sql.NullString, len(tableCols))
+		record := make([]interface{}, 0, len(tableCols))
+		for _, col := range tableCols {
+			switch strings.ToLower(col.Type) {
+			case "date", "time without time zone", "time with time zone", "timestamp without time zone", "timestamp with time zone":
+				record = append(record, sql.NullTime{})
+			default:
+				record = append(record, sql.NullString{})
+			}
+		}
 		recordP := make([]interface{}, len(tableCols))
 		for i := range record {
 			recordP[i] = &record[i]
@@ -109,7 +118,24 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		data := make([]string, 0)
 		data = append(data, strconv.FormatInt(int64(recordNum), 10))
 		for i := range record {
-			data = append(data, record[i].String)
+			switch v := record[i].(type) {
+			case int64, int16, int32, int8, int, uint, uint16, uint32, uint64:
+				data = append(data, strconv.FormatInt(v.(int64), 10))
+			case bool:
+				data = append(data, strconv.FormatBool(v))
+			case float32, float64:
+				data = append(data, strconv.FormatFloat(v.(float64), 'E', -1, 32))
+			case time.Time:
+				if strings.ToLower(tableCols[i].Type) == "date" {
+					data = append(data, v.Format("2006-01-02"))
+				} else {
+					data = append(data, v.Format("2006-01-02 15:04:05"))
+				}
+			case nil:
+				data = append(data, "")
+			default:
+				data = append(data, v.(string))
+			}
 		}
 		recordNum += 1
 		records = append(records, data)
