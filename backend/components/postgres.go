@@ -114,8 +114,9 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		recordNum += 1
 		records = append(records, data)
 	}
-	tmpPath := "data.csv"
-	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/out1", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId)
+	os.Mkdir(currentNode.Id, os.ModePerm)
+	tmpPath := fmt.Sprintf("%s/data.csv", currentNode.Id)
+	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/%s", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId, currentNode.Id)
 	os.Remove(tmpPath)
 	file, err := os.Create(tmpPath)
 	if err != nil {
@@ -132,6 +133,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 
 	return map[string]interface{}{"out1": tmpKey}, nil
 }
+
 func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
 
@@ -154,9 +156,10 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 	defer rows.Close()
 	return map[string]interface{}{"out1": "success"}, nil
 }
+
 func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	args := config.GetArgs()
-	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), "data.csv")
+	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
 	tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
 	os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
 	storageErr := storage.FGetObject(tmpKey, tmpPath)
@@ -183,6 +186,7 @@ func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]int
 	}
 	return map[string]interface{}{"out1": "success"}, nil
 }
+
 func ReadCsvToSql(r io.Reader, currentNode Node) error {
 	csvReader := csv.NewReader(r)
 	records, err := csvReader.ReadAll()

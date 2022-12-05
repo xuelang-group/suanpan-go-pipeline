@@ -95,6 +95,7 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 					server.BroadcastToNamespace("/", "notify.process.error", map[string]string{currentNode.Id: err.Error()})
 				}
 			} else {
+				log.Infof("节点%s(%s)运行成功", currentNode.Key, currentNode.Id)
 				currentNode.dumpOutput(currentNode, outputData)
 				currentNode.Status = 0
 				if server != nil {
