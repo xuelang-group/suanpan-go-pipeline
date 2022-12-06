@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
@@ -83,7 +84,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		return map[string]interface{}{}, nil
 	}
 	for i, col := range columnNames {
-		tableCol := pgDataCol{Name: col, Type: columnTypes[i].ScanType().String()}
+		tableCol := pgDataCol{Name: col, Type: columnTypes[i].DatabaseTypeName()}
 		tableCols = append(tableCols, tableCol)
 	}
 	records := make([][]string, 0)
@@ -96,26 +97,54 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	recordNum := 0
 	defer rows.Close()
 	for rows.Next() {
-		record := make([]sql.NullString, len(tableCols))
+		record := make([]interface{}, 0, len(tableCols))
+		for _, col := range tableCols {
+			switch strings.ToLower(col.Type) {
+			case "date", "time without time zone", "time with time zone", "timestamp without time zone", "timestamp with time zone":
+				record = append(record, sql.NullTime{})
+			default:
+				record = append(record, sql.NullString{})
+			}
+		}
 		recordP := make([]interface{}, len(tableCols))
 		for i := range record {
 			recordP[i] = &record[i]
 		}
 		err = rows.Scan(recordP...)
 		if err != nil {
-			log.Infof("数据表检索失败")
+			log.Infof("数据表数据检索失败")
 			return map[string]interface{}{}, nil
 		}
 		data := make([]string, 0)
 		data = append(data, strconv.FormatInt(int64(recordNum), 10))
 		for i := range record {
-			data = append(data, record[i].String)
+			switch v := record[i].(type) {
+			case int64, int16, int32, int8, int, uint, uint16, uint32, uint64:
+				data = append(data, strconv.FormatInt(v.(int64), 10))
+			case bool:
+				data = append(data, strconv.FormatBool(v))
+			case float32, float64:
+				data = append(data, strconv.FormatFloat(v.(float64), 'E', -1, 32))
+			case time.Time:
+				if strings.ToLower(tableCols[i].Type) == "date" {
+					data = append(data, v.Format("2006-01-02"))
+				} else {
+					data = append(data, v.Format("2006-01-02 15:04:05"))
+				}
+			case nil:
+				data = append(data, "")
+			case []uint8:
+				data = append(data, string([]byte(v)))
+			default:
+				data = append(data, v.(string))
+			}
 		}
 		recordNum += 1
 		records = append(records, data)
 	}
-	tmpPath := "data.csv"
-	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/out1", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId)
+	os.Mkdir(currentNode.Id, os.ModePerm)
+	tmpPath := fmt.Sprintf("%s/data.csv", currentNode.Id)
+	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/%s", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId, currentNode.Id)
 	os.Remove(tmpPath)
 	file, err := os.Create(tmpPath)
 	if err != nil {
@@ -132,6 +161,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 
 	return map[string]interface{}{"out1": tmpKey}, nil
 }
+
 func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
 
@@ -154,9 +184,10 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 	defer rows.Close()
 	return map[string]interface{}{"out1": "success"}, nil
 }
+
 func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	args := config.GetArgs()
-	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), "data.csv")
+	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
 	tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
 	os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
 	storageErr := storage.FGetObject(tmpKey, tmpPath)
@@ -183,6 +214,7 @@ func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]int
 	}
 	return map[string]interface{}{"out1": "success"}, nil
 }
+
 func ReadCsvToSql(r io.Reader, currentNode Node) error {
 	csvReader := csv.NewReader(r)
 	records, err := csvReader.ReadAll()
