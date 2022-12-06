@@ -16,15 +16,17 @@ import (
 )
 
 func main() {
-	if len(config.GetArgs()["--__python__pkgs"]) > 0 {
-		for _, pkg := range strings.Split(config.GetArgs()["--__python__pkgs"], ",") {
-			cmd := exec.Command("pip", "install", pkg, "-i", "https://pypi.mirrors.ustc.edu.cn/simple")
-			log.Infof("开始安装python依赖库%s...", pkg)
-			err := cmd.Run()
-			if err != nil {
-				log.Errorf("安装python依赖库%s失败，失败原因：%s", pkg, err.Error())
-			} else {
-				log.Infof("安装python依赖库%s成功", pkg)
+	if val, ok := config.GetArgs()["--__python__pkgs"]; ok {
+		if len(val) > 0 {
+			for _, pkg := range strings.Split(val, ",") {
+				cmd := exec.Command("pip", "install", pkg, "-i", "https://pypi.mirrors.ustc.edu.cn/simple")
+				log.Infof("开始安装python依赖库%s...", pkg)
+				err := cmd.Run()
+				if err != nil {
+					log.Errorf("安装python依赖库%s失败，失败原因：%s", pkg, err.Error())
+				} else {
+					log.Infof("安装python依赖库%s成功", pkg)
+				}
 			}
 		}
 	}
