@@ -133,6 +133,8 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 				}
 			case nil:
 				data = append(data, "")
+			case []uint8:
+				data = append(data, string([]byte(v)))
 			default:
 				data = append(data, v.(string))
 			}
