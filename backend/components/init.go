@@ -70,13 +70,13 @@ func (c *Node) Init(nodeType string) {
 func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf("Caught exception: %s", err)
+			log.Errorf("节点%s(%s)运行异常，错误日志：%s", currentNode.Key, currentNode.Id, err)
 		}
 		wg.Done()
 	}()
 	select {
 	case <-stopChan:
-		log.Info("Recive stop event")
+		log.Infof("节点%s(%s)运行被中断", currentNode.Key, currentNode.Id)
 	default:
 		receiveInputs := false
 		for _, v := range currentNode.InputData {
