@@ -24,12 +24,12 @@ type Node struct {
 	Id            string
 	Key           string
 	Run           func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server)
-	dumpOutput    func(currentNode Node, outputData map[string]interface{})
-	UpdateInput   func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
-	loadInput     func(currentNode Node, inputData RequestData) error
-	main          func(currentNode Node, inputData RequestData) (map[string]interface{}, error)
-	initNode      func(currentNode Node) error
-	Status        int // 0: stoped 1： running -1：error
+	// dumpOutput    func(currentNode Node, outputData map[string]interface{})
+	UpdateInput func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
+	loadInput   func(currentNode Node, inputData RequestData) error
+	main        func(currentNode Node, inputData RequestData) (map[string]interface{}, error)
+	initNode    func(currentNode Node) error
+	Status      int // 0: stoped 1： running -1：error
 }
 
 type RequestData struct {
@@ -41,7 +41,7 @@ type RequestData struct {
 func (c *Node) Init(nodeType string) {
 	c.Run = Run
 	c.UpdateInput = UpdateInput
-	c.dumpOutput = dumpOutput
+	// c.dumpOutput = dumpOutput
 	switch nodeType {
 	case "StreamIn":
 		c.main = streamInMain
@@ -96,14 +96,22 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 				}
 			} else {
 				log.Infof("节点%s(%s)运行成功", currentNode.Key, currentNode.Id)
-				currentNode.dumpOutput(currentNode, outputData)
+				for port, data := range outputData { //map[out1:true]
+					for _, tgt := range currentNode.PortConnects[port] {
+						tgtInfo := strings.Split(tgt, "-")
+						for _, node := range currentNode.NextNodes {
+							if node.Id == tgtInfo[0] {
+								log.Infof("数据下发到节点%s(%s)，并开始运行", node.Key, node.Id)
+								node.InputData[tgtInfo[1]] = data
+								wg.Add(1)
+								go node.Run(*node, RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server)
+							}
+						}
+					}
+				}
 				currentNode.Status = 0
 				if server != nil {
 					server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: 0})
-				}
-				for _, node := range currentNode.NextNodes {
-					wg.Add(1)
-					go node.Run(*node, RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server)
 				}
 			}
 		}
@@ -123,15 +131,15 @@ func UpdateInput(currentNode Node, inputData RequestData, wg *sync.WaitGroup, st
 	}
 }
 
-func dumpOutput(currentNode Node, outputData map[string]interface{}) {
-	for port, data := range outputData { //map[out1:true]
-		for _, tgt := range currentNode.PortConnects[port] {
-			tgtInfo := strings.Split(tgt, "-")
-			for _, node := range currentNode.NextNodes {
-				if node.Id == tgtInfo[0] {
-					node.InputData[tgtInfo[1]] = data
-				}
-			}
-		}
-	}
-}
+// func dumpOutput(currentNode Node, outputData map[string]interface{}) {
+// 	for port, data := range outputData { //map[out1:true]
+// 		for _, tgt := range currentNode.PortConnects[port] {
+// 			tgtInfo := strings.Split(tgt, "-")
+// 			for _, node := range currentNode.NextNodes {
+// 				if node.Id == tgtInfo[0] {
+// 					node.InputData[tgtInfo[1]] = data
+// 				}
+// 			}
+// 		}
+// 	}
+// }
