@@ -1,6 +1,7 @@
 package components
 
 import (
+	"goPipeline/utils"
 	"strings"
 	"sync"
 
@@ -96,17 +97,25 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 				}
 			} else {
 				log.Infof("节点%s(%s)运行成功", currentNode.Key, currentNode.Id)
+				readyToRun := make([]string, 0)
 				for port, data := range outputData { //map[out1:true]
 					for _, tgt := range currentNode.PortConnects[port] {
 						tgtInfo := strings.Split(tgt, "-")
 						for _, node := range currentNode.NextNodes {
 							if node.Id == tgtInfo[0] {
-								log.Infof("数据下发到节点%s(%s)，并开始运行", node.Key, node.Id)
+								log.Infof("数据下发到节点%s(%s)", node.Key, node.Id)
 								node.InputData[tgtInfo[1]] = data
-								wg.Add(1)
-								go node.Run(*node, RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server)
+								if !utils.SlicesContain(readyToRun, node.Id) {
+									readyToRun = append(readyToRun, node.Id)
+								}
 							}
 						}
+					}
+				}
+				for i := range currentNode.NextNodes {
+					if utils.SlicesContain(readyToRun, currentNode.NextNodes[i].Id) {
+						wg.Add(1)
+						go currentNode.NextNodes[i].Run(*currentNode.NextNodes[i], RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server)
 					}
 				}
 				currentNode.Status = 0
