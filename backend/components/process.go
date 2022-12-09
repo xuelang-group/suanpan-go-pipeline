@@ -1,6 +1,7 @@
 package components
 
 import (
+	"goPipeline/utils"
 	"strings"
 )
 
@@ -47,7 +48,7 @@ func dataSyncMain(currentNode Node, inputData RequestData) (map[string]interface
 					recieveAll = false
 				}
 			}
-			if recieveAll && currentNode.InputData[currentNode.Config["triggerPort"].(string)] != nil {
+			if recieveAll && utils.SlicesContain(currentNode.TriggeredPorts, currentNode.Config["triggerPort"].(string)) {
 				for port, data := range currentNode.InputData {
 					result[strings.Replace(port, "in", "out", -1)] = data
 				}
@@ -62,7 +63,7 @@ func dataSyncMain(currentNode Node, inputData RequestData) (map[string]interface
 					recieveAll = false
 				}
 			}
-			if recieveAll && currentNode.InputData[currentNode.Config["triggerPort"].(string)] != nil {
+			if recieveAll && utils.SlicesContain(currentNode.TriggeredPorts, currentNode.Config["triggerPort"].(string)) {
 				for port, data := range currentNode.InputData {
 					result[strings.Replace(port, "in", "out", -1)] = data
 				}

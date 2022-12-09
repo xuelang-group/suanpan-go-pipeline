@@ -176,7 +176,7 @@ func (g *Graph) Update(newGraph utils.GraphConfig) {
 }
 
 func (g *Graph) Run(inputData map[string]string, id string, extra string, server *socketio.Server, useCache bool) {
-	log.Info("Start To Run Graph.")
+	log.Info("流程图开始运行")
 	g.PipelineStatus = 1
 	g.wg = sync.WaitGroup{}
 	g.stopChan = make(chan bool)
@@ -203,11 +203,11 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 	g.wg.Wait()
 	g.PipelineStatus = 0
 	close(g.stopChan)
-	log.Info("Graph Run Done.")
+	log.Info("流程图运行结束")
 }
 
 func (g *Graph) UpdateInputs(inputData map[string]string, id string, extra string) {
-	log.Info("Start To Update Inputs.")
+	log.Info("输入数据开始更新")
 	g.wg = sync.WaitGroup{}
 	g.stopChan = make(chan bool)
 	for _, node := range g.Nodes {
@@ -220,7 +220,7 @@ func (g *Graph) UpdateInputs(inputData map[string]string, id string, extra strin
 	}
 	g.wg.Wait()
 	close(g.stopChan)
-	log.Info("Update Inputs Done.")
+	log.Info("输入数据结束更新")
 }
 
 func (g *Graph) Stop() {

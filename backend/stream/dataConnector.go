@@ -15,12 +15,12 @@ type DataConnectorComponent struct {
 func (c *DataConnectorComponent) CallHandler(r stream.Request) {
 	inputData := r.Input
 	for key, value := range inputData {
-		log.Infof("input port %s receive request data %s", key, value)
+		log.Infof("输入端口： %s 收到请求数据： %s", key, value)
 	}
 	if graph.GraphInst.Status == 1 {
-		go graph.GraphInst.Run(inputData, r.ID, r.Extra, nil, false)
+		graph.GraphInst.Run(inputData, r.ID, r.Extra, nil, false)
 	} else {
-		go graph.GraphInst.UpdateInputs(inputData, r.ID, r.Extra)
+		graph.GraphInst.UpdateInputs(inputData, r.ID, r.Extra)
 	}
 }
 
