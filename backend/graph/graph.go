@@ -133,9 +133,9 @@ func (g *Graph) nodesInit() {
 			if node.Id == connection.Src["uuid"] {
 				if !g.checkNode(connection.Tgt["uuid"], node.NextNodes) {
 					node.NextNodes = append(node.NextNodes, g.findNode(connection.Tgt["uuid"]))
-					if !utils.SlicesContain(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"]) {
-						node.PortConnects[connection.Src["port"]] = append(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"])
-					}
+				}
+				if !utils.SlicesContain(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"]) {
+					node.PortConnects[connection.Src["port"]] = append(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"])
 				}
 			}
 			if node.Id == connection.Tgt["uuid"] {
