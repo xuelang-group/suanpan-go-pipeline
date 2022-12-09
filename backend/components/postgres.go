@@ -176,12 +176,11 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 		return map[string]interface{}{}, nil
 	}
 	tableQueryStr := currentNode.Config["sql"].(string)
-	rows, err := db.Query(tableQueryStr)
+	_, err = db.Exec(tableQueryStr)
 	if err != nil {
 		log.Infof("数据表执行sql语句失败")
 		return map[string]interface{}{}, nil
 	}
-	defer rows.Close()
 	return map[string]interface{}{"out1": "success"}, nil
 }
 
@@ -255,18 +254,16 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		tableScheamStr := strings.Join(tableScheamArr, ",")
 		tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableScheamStr)
 		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
-		drop_rows, err := db.Query(tableDropStr)
+		_, err := db.Exec(tableDropStr)
 		if err != nil {
 			log.Infof("删除原表失败")
 			return err
 		}
-		defer drop_rows.Close()
-		create_rows, err := db.Query(tableCreateStr)
+		_, err = db.Exec(tableCreateStr)
 		if err != nil {
 			log.Infof("创建表失败")
 			return err
 		}
-		defer create_rows.Close()
 		//插入数据
 		l := len(records) - 1
 		n := l/chunksize + 1
@@ -307,12 +304,11 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 
 				}
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(tableColumns, ","), tableInsertValues)
-				rows, err := db.Query(tableInsertStr)
+				_, err := db.Exec(tableInsertStr)
 				if err != nil {
 					log.Infof("覆盖写入表失败")
 					return err
 				}
-				defer rows.Close()
 			}
 		}
 
@@ -356,12 +352,11 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		if strings.Compare(mode, "clearAndAppend") == 0 {
 			log.Infof("开始清空并追加")
 			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, tablename)
-			rows, err := db.Query(tableClearStr)
+			_, err := db.Exec(tableClearStr)
 			if err != nil {
 				log.Infof("清空表失败")
 				return err
 			}
-			defer rows.Close()
 		}
 		//插入数据
 		l := len(records) - 1
@@ -415,12 +410,11 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
-				rows, err := db.Query(tableInsertStr)
+				_, err := db.Exec(tableInsertStr)
 				if err != nil {
 					log.Infof("追加写入表失败")
 					return err
 				}
-				defer rows.Close()
 			}
 		}
 	}
