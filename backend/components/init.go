@@ -16,15 +16,16 @@ type NodeAction interface {
 }
 
 type Node struct {
-	PreviousNodes []*Node
-	NextNodes     []*Node
-	InputData     map[string]interface{}
-	OutputData    map[string]interface{}
-	PortConnects  map[string][]string
-	Config        map[string]interface{}
-	Id            string
-	Key           string
-	Run           func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server)
+	TriggeredPorts []string
+	PreviousNodes  []*Node
+	NextNodes      []*Node
+	InputData      map[string]interface{}
+	OutputData     map[string]interface{}
+	PortConnects   map[string][]string
+	Config         map[string]interface{}
+	Id             string
+	Key            string
+	Run            func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server)
 	// dumpOutput    func(currentNode Node, outputData map[string]interface{})
 	UpdateInput func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
 	loadInput   func(currentNode Node, inputData RequestData) error
@@ -98,15 +99,17 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 			} else {
 				log.Infof("节点%s(%s)运行成功", currentNode.Key, currentNode.Id)
 				readyToRun := make([]string, 0)
+				triggeredPorts := make(map[string][]string)
 				for port, data := range outputData { //map[out1:true]
 					for _, tgt := range currentNode.PortConnects[port] {
 						tgtInfo := strings.Split(tgt, "-")
-						for _, node := range currentNode.NextNodes {
-							if node.Id == tgtInfo[0] {
-								log.Infof("数据下发到节点%s(%s)", node.Key, node.Id)
-								node.InputData[tgtInfo[1]] = data
-								if !utils.SlicesContain(readyToRun, node.Id) {
-									readyToRun = append(readyToRun, node.Id)
+						for i := range currentNode.NextNodes {
+							if currentNode.NextNodes[i].Id == tgtInfo[0] {
+								log.Infof("数据下发到节点%s(%s)", currentNode.NextNodes[i].Key, currentNode.NextNodes[i].Id)
+								currentNode.NextNodes[i].InputData[tgtInfo[1]] = data
+								triggeredPorts[currentNode.NextNodes[i].Id] = append(triggeredPorts[currentNode.NextNodes[i].Id], tgtInfo[1])
+								if !utils.SlicesContain(readyToRun, currentNode.NextNodes[i].Id) {
+									readyToRun = append(readyToRun, currentNode.NextNodes[i].Id)
 								}
 							}
 						}
@@ -114,6 +117,7 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 				}
 				for i := range currentNode.NextNodes {
 					if utils.SlicesContain(readyToRun, currentNode.NextNodes[i].Id) {
+						currentNode.NextNodes[i].TriggeredPorts = triggeredPorts[currentNode.NextNodes[i].Id]
 						wg.Add(1)
 						go currentNode.NextNodes[i].Run(*currentNode.NextNodes[i], RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server)
 					}
