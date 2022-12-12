@@ -21,9 +21,9 @@ func sendToStream() {
 	})
 }
 
-func RunWeb() {
+func RunWeb(appType string) {
 
-	graph.GraphInst.Init()
+	graph.GraphInst.Init(appType)
 
 	server.OnConnect("/", func(s socketio.Conn) error {
 		log.Infof("connected: %s", s.ID())

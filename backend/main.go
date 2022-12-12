@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"goPipeline/stream"
 	"goPipeline/utils"
 	"goPipeline/web"
@@ -38,12 +37,15 @@ func main() {
 	}
 	var comp stream.Component
 	args := os.Args
-	switch args[1] {
-	case "DataConnector":
-		// 数据连接器
-		comp = &stream.DataConnectorComponent{}
-	default:
-		errors.New("not support")
+	if len(args) >= 2 {
+		// 数据连接器 DataConnector
+		if utils.SlicesContain([]string{"DataConnector"}, args[1]) {
+			comp = &stream.DataConnectorComponent{Type: args[1]}
+		} else {
+			panic("启动组件名错误")
+		}
+	} else {
+		panic("未提供启动组件名称")
 	}
 	comp.InitHandler()
 	comp.SioHandler()
