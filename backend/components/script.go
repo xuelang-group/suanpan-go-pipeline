@@ -19,6 +19,7 @@ type scriptData struct {
 }
 
 func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	log.Infof("ly---inputdata%s", currentNode.InputData)
 	inputStrings := getScriptInputData(currentNode)
 	inputsStringArr := make([]string, 0)
 	for _, inputString := range inputStrings {
@@ -42,23 +43,24 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	defer resp.Body.Close()
 	stdout, err := ioutil.ReadAll(resp.Body)
 	fmt.Println(string(stdout))
-
 	// cmdStrings := make([]string, 0)
 	// cmdStrings = append(cmdStrings, "scripts/pyRuntime.py")
 	// for _, inputString := range inputStrings {
-	// 	cmdStrings = append(cmdStrings, inputString)
+	//         cmdStrings = append(cmdStrings, inputString)
 	// }
-
 	// cmdStrings = append(cmdStrings, "--script")
 	// cmdStrings = append(cmdStrings, currentNode.Config["script"].(string))
 	// cmd := exec.Command("python3", cmdStrings...)
 	// stdout, err := cmd.Output()
-	if err != nil {
-		log.Infof("can not run script with error: %s", err.Error())
-		return map[string]interface{}{}, nil
-	}
+	// if err != nil {
+	//         log.Infof("can not run script with error: %s", err.Error())
+	//         return map[string]interface{}{}, nil
+	// }
 	outs := []scriptData{}
+	log.Infof("ly---stdout %s", stdout)
+
 	err1 := json.Unmarshal(stdout, &outs)
+	log.Infof("ly---outs %s", outs)
 	if err1 != nil {
 		log.Infof("can not solve output data with error: %s", err.Error())
 		return map[string]interface{}{}, nil

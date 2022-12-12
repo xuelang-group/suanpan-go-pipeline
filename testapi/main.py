@@ -54,7 +54,7 @@ def run(inputs=None, script=""):
     print("ly---")
 
     for input in inputs:
-        print(input)
+        # print(input)
         input = json.loads(eval("'{}'".format(input)))
         loadedInputs.append(loadMethods[input["type"]](input["data"]))
     # input = json.loads(eval("'{}'".format(inputs)))
@@ -66,7 +66,7 @@ def run(inputs=None, script=""):
             dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
         else:
             raise Exception(f"type of {output} is not supported.")
-    return json.dumps(dumpedOutputs)
+    return dumpedOutputs
 
 
 @app.get("/data/")
@@ -74,9 +74,12 @@ async def getInputdata(inputdata, script):
     print(inputdata)#{"data":"1","type":"json"},{"data":"2","type":"json"}
     print(script)
     tmp = inputdata.split("},")
-    tmp[0] = tmp[0] + "}"
-    print(tmp)
+    if len(tmp) > 1:
+        for i in range(len(tmp) - 1):
+            tmp[i] = tmp[i] + "}"
+    # print(tmp)
     result = run(tmp, script)
+    print(result)
     # return {
     #     "input": inputdata,
     #     "script": script

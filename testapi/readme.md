@@ -2,7 +2,9 @@
 ```
 pip wget https://bootstrap.pypa.io/get-pip.py
 python3 get-pip.py
-遇到报错No module named 'distutils.util'，sudo apt-get install python3-distutils
+遇到报错No module named 'distutils.util'，
+sudo apt-get install python3-distutils
+python3 get-pip.py
 ```
 ### 安装fastapi
 ```
