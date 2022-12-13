@@ -64,9 +64,10 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	// }
 	tableQueryStr := ""
 	if len(currentNode.Config["sql"].(string)) == 0 {
-		tableQueryStr = fmt.Sprintf("SELECT * FROM %s.%s", currentNode.Config["schema"].(string), currentNode.Config["table"].(string))
+		tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
+		tableQueryStr = fmt.Sprintf("SELECT * FROM %s.%s", currentNode.Config["schema"].(string), tablename)
 	} else {
-		tableQueryStr = currentNode.Config["sql"].(string)
+		tableQueryStr = loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	}
 	rows, err := db.Query(tableQueryStr)
 	if err != nil {
@@ -175,7 +176,7 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 		log.Infof("数据库测试连接失败，请检查配置")
 		return map[string]interface{}{}, nil
 	}
-	tableQueryStr := currentNode.Config["sql"].(string)
+	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	_, err = db.Exec(tableQueryStr)
 	if err != nil {
 		log.Infof("数据表执行sql语句失败")
@@ -233,7 +234,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		return err
 	}
 
-	tablename := currentNode.Config["table"].(string)
+	tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
 	schema := currentNode.Config["databaseChoose"].(string)
 	chunksizeRaw := currentNode.Config["chunksize"].(string)
 	mode := currentNode.Config["mode"].(string)

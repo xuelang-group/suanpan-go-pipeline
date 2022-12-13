@@ -1,9 +1,12 @@
 package components
 
 import (
+	"bytes"
+	"goPipeline/graph"
 	"goPipeline/utils"
 	"strings"
 	"sync"
+	"text/template"
 
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -156,3 +159,18 @@ func UpdateInput(currentNode Node, inputData RequestData, wg *sync.WaitGroup, st
 // 		}
 // 	}
 // }
+
+func loadParameter(parameter string, variables map[string]interface{}) string {
+	paramT := template.New("parameterLoader")
+	paramT, err := paramT.Parse(parameter)
+	if err != nil {
+		log.Infof("无法正常载入参数：%s", parameter)
+		return parameter
+	}
+	var result bytes.Buffer
+	for k, v := range graph.GraphInst.GlobalVariables {
+		variables[k] = v
+	}
+	paramT.Execute(&result, variables)
+	return result.String()
+}
