@@ -1,6 +1,7 @@
 import json
 import argparse
 import pandas
+import requests
 
 
 functionSting = '''
@@ -41,6 +42,18 @@ typeMappings = {
     list: "json",
     bool: "json"
 }
+
+def getGlobalVar(name):
+    r = requests.get('0.0.0.0:8888', params={"name": name})
+    return json.loads(r.content)["data"]
+
+def setGlobalVar(name, data):
+    r = requests.post('0.0.0.0:8888', params={"name": name}, json=data)
+    return json.loads(r.content)
+
+def delGlobalVar(name):
+    r = requests.delete('0.0.0.0:8888', params={"name": name})
+    return json.loads(r.content)
 
 def run(inputs=None, script=""):
     exec(functionSting % script.replace("\n", "\n    "), globals())

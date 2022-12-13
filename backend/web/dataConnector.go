@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/json"
 	"goPipeline/graph"
 	"goPipeline/utils"
 	"net/http"
@@ -19,6 +20,62 @@ func sendToStream() {
 	r.Send(map[string]string{
 		"out1": "",
 	})
+}
+
+func variable(w http.ResponseWriter, req *http.Request) {
+	name := req.URL.Query().Get("name")
+	if len(name) == 0 {
+		respond := RespondMsg{Success: false, Data: nil}
+		jsonResp, err := json.Marshal(respond)
+		if err != nil {
+			log.Errorf("Error happened in JSON marshal. Err: %s", err.Error())
+		}
+		w.Write(jsonResp)
+		return
+	}
+	switch req.Method {
+	case "GET":
+		if val, ok := graph.GraphInst.GlobalVariables[name]; ok {
+			respond := RespondMsg{Success: true, Data: val}
+			jsonResp, err := json.Marshal(respond)
+			if err != nil {
+				log.Errorf("Error happened in JSON marshal. Err: %s", err.Error())
+			}
+			w.Write(jsonResp)
+			return
+		} else {
+			respond := RespondMsg{Success: true, Data: nil}
+			jsonResp, err := json.Marshal(respond)
+			if err != nil {
+				log.Errorf("Error happened in JSON marshal. Err: %s", err.Error())
+			}
+			w.Write(jsonResp)
+			return
+		}
+	case "POST":
+		var data interface{}
+		err := json.NewDecoder(req.Body).Decode(&data)
+		if err != nil {
+			log.Errorf("Error happened in JSON decoding. Err: %s", err.Error())
+			respond := RespondMsg{Success: false, Data: nil}
+			jsonResp, _ := json.Marshal(respond)
+			w.Write(jsonResp)
+			return
+		}
+		graph.GraphInst.GlobalVariables[name] = data
+		respond := RespondMsg{Success: true, Data: nil}
+		jsonResp, _ := json.Marshal(respond)
+		w.Write(jsonResp)
+		return
+	case "DELETE":
+		delete(graph.GraphInst.GlobalVariables, name)
+		respond := RespondMsg{Success: true, Data: nil}
+		jsonResp, _ := json.Marshal(respond)
+		w.Write(jsonResp)
+		return
+	default:
+	}
+
 }
 
 func RunWeb(appType string) {
@@ -97,6 +154,7 @@ func RunWeb(appType string) {
 
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.FileServer(http.Dir("statics")))
+	http.HandleFunc("/variable", variable)
 
 	http.ListenAndServe("0.0.0.0:"+WebServerPort, nil)
 }
