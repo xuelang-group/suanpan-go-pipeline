@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"goPipeline/components"
 	"goPipeline/utils"
+	"goPipeline/variables"
 	"io"
 	"os"
 	"path"
@@ -20,17 +21,16 @@ import (
 )
 
 type Graph struct {
-	Status          uint // 0: edit 1: deploy
-	PipelineStatus  uint // 0: stop 1: running
-	Nodes           []components.Node
-	Components      []utils.Component
-	Config          utils.GraphConfig
-	NodeInfo        utils.NodeInfo
-	stopChan        chan bool
-	wg              sync.WaitGroup
-	path            string
-	key             string
-	GlobalVariables map[string]interface{}
+	Status         uint // 0: edit 1: deploy
+	PipelineStatus uint // 0: stop 1: running
+	Nodes          []components.Node
+	Components     []utils.Component
+	Config         utils.GraphConfig
+	NodeInfo       utils.NodeInfo
+	stopChan       chan bool
+	wg             sync.WaitGroup
+	path           string
+	key            string
 }
 
 func (g *Graph) Init(appType string) {
@@ -43,7 +43,7 @@ func (g *Graph) Init(appType string) {
 	g.componentsInit(appType)
 	g.graphInit()
 	g.nodesInit()
-	g.GlobalVariables = make(map[string]interface{})
+	variables.GlobalVariables = make(map[string]interface{})
 }
 
 func (g *Graph) graphInit() {

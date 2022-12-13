@@ -2,8 +2,8 @@ package components
 
 import (
 	"bytes"
-	"goPipeline/graph"
 	"goPipeline/utils"
+	"goPipeline/variables"
 	"strings"
 	"sync"
 	"text/template"
@@ -57,6 +57,12 @@ func (c *Node) Init(nodeType string) {
 		c.main = jsonExtractorMain
 	case "DataSync":
 		c.main = dataSyncMain
+	case "GlobalVariableSetter":
+		c.main = globalVariableSetterMain
+	case "GlobalVariableGetter":
+		c.main = globalVariableGetterMain
+	case "GlobalVariableDeleter":
+		c.main = globalVariablDeleterMain
 	case "ExecutePythonScript":
 		c.main = pyScriptMain
 	case "PostgresReader":
@@ -160,7 +166,7 @@ func UpdateInput(currentNode Node, inputData RequestData, wg *sync.WaitGroup, st
 // 	}
 // }
 
-func loadParameter(parameter string, variables map[string]interface{}) string {
+func loadParameter(parameter string, vars map[string]interface{}) string {
 	paramT := template.New("parameterLoader")
 	paramT, err := paramT.Parse(parameter)
 	if err != nil {
@@ -168,9 +174,9 @@ func loadParameter(parameter string, variables map[string]interface{}) string {
 		return parameter
 	}
 	var result bytes.Buffer
-	for k, v := range graph.GraphInst.GlobalVariables {
-		variables[k] = v
+	for k, v := range variables.GlobalVariables {
+		vars[k] = v
 	}
-	paramT.Execute(&result, variables)
+	paramT.Execute(&result, vars)
 	return result.String()
 }

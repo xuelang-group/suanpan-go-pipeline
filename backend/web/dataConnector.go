@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"goPipeline/graph"
 	"goPipeline/utils"
+	"goPipeline/variables"
 	"net/http"
 
 	socketio "github.com/googollee/go-socket.io"
@@ -35,7 +36,7 @@ func variable(w http.ResponseWriter, req *http.Request) {
 	}
 	switch req.Method {
 	case "GET":
-		if val, ok := graph.GraphInst.GlobalVariables[name]; ok {
+		if val, ok := variables.GlobalVariables[name]; ok {
 			respond := RespondMsg{Success: true, Data: val}
 			jsonResp, err := json.Marshal(respond)
 			if err != nil {
@@ -62,13 +63,13 @@ func variable(w http.ResponseWriter, req *http.Request) {
 			w.Write(jsonResp)
 			return
 		}
-		graph.GraphInst.GlobalVariables[name] = data
+		variables.GlobalVariables[name] = data
 		respond := RespondMsg{Success: true, Data: nil}
 		jsonResp, _ := json.Marshal(respond)
 		w.Write(jsonResp)
 		return
 	case "DELETE":
-		delete(graph.GraphInst.GlobalVariables, name)
+		delete(variables.GlobalVariables, name)
 		respond := RespondMsg{Success: true, Data: nil}
 		jsonResp, _ := json.Marshal(respond)
 		w.Write(jsonResp)
