@@ -2,8 +2,12 @@ package components
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
-	"os/exec"
+	"strings"
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -15,23 +19,48 @@ type scriptData struct {
 }
 
 func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	log.Infof("ly---inputdata%s", currentNode.InputData)
 	inputStrings := getScriptInputData(currentNode)
-	cmdStrings := make([]string, 0)
-	cmdStrings = append(cmdStrings, "scripts/pyRuntime.py")
+	inputsStringArr := make([]string, 0)
 	for _, inputString := range inputStrings {
-		cmdStrings = append(cmdStrings, inputString)
+		inputsStringArr = append(inputsStringArr, inputString)
 	}
-	cmdStrings = append(cmdStrings, "--script")
-	cmdStrings = append(cmdStrings, currentNode.Config["script"].(string))
-	cmd := exec.Command("python3", cmdStrings...)
-	stdout, err := cmd.Output()
+	var inputdata = strings.Join(inputsStringArr, ",")
+	var script = currentNode.Config["script"].(string)
+	params := url.Values{}
+
+	Url, err := url.Parse("http://0.0.0.0:8080/data/?inputdata=fdsf&script=scr")
 	if err != nil {
-		log.Infof("can not run script with error: %s", err.Error())
-		log.Infof("error detail: %s", stdout)
-		return map[string]interface{}{}, nil
+		panic(err.Error())
 	}
+	params.Set("inputdata", inputdata)
+	params.Set("script", script)
+	//如果参数中有中文参数,这个方法会进行URLEncode
+	Url.RawQuery = params.Encode()
+	urlPath := Url.String()
+	fmt.Println(urlPath)
+	resp, err := http.Get(urlPath)
+	defer resp.Body.Close()
+	stdout, err := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(stdout))
+	// cmdStrings := make([]string, 0)
+	// cmdStrings = append(cmdStrings, "scripts/pyRuntime.py")
+	// for _, inputString := range inputStrings {
+	//         cmdStrings = append(cmdStrings, inputString)
+	// }
+	// cmdStrings = append(cmdStrings, "--script")
+	// cmdStrings = append(cmdStrings, currentNode.Config["script"].(string))
+	// cmd := exec.Command("python3", cmdStrings...)
+	// stdout, err := cmd.Output()
+	// if err != nil {
+	//         log.Infof("can not run script with error: %s", err.Error())
+	//         return map[string]interface{}{}, nil
+	// }
 	outs := []scriptData{}
+	log.Infof("ly---stdout %s", stdout)
+
 	err1 := json.Unmarshal(stdout, &outs)
+	log.Infof("ly---outs %s", outs)
 	if err1 != nil {
 		log.Infof("can not solve output data with error: %s", err.Error())
 		return map[string]interface{}{}, nil
@@ -94,7 +123,6 @@ func getScriptOutputData(outputs []scriptData, currentNode Node) map[string]inte
 		} else {
 			break
 		}
-		idx += 1
 	}
 	return outputDatas
 }

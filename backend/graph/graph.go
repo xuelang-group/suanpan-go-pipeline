@@ -23,6 +23,7 @@ import (
 type Graph struct {
 	Status         uint // 0: edit 1: deploy
 	PipelineStatus uint // 0: stop 1: running
+	// ProcessMode	   uint // 1: 全部运行 2: 运行单个节点 3：停止运行
 	Nodes          []components.Node
 	Components     []utils.Component
 	Config         utils.GraphConfig
