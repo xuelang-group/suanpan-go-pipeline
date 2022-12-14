@@ -2,6 +2,7 @@ import json
 import argparse
 import pandas
 import requests
+import traceback
 
 
 functionSting = '''
@@ -79,4 +80,9 @@ if __name__=="__main__":
     parser.add_argument('--script', dest='script', type=str,
                         help='script function process the inputs.')
     args = parser.parse_args()
-    print(run(args.inputs, args.script))
+    try:
+        print(run(args.inputs, args.script))
+    except Exception as e:
+        tracebackInfo = traceback.format_exc()
+        print(tracebackInfo)
+        raise Exception(tracebackInfo)

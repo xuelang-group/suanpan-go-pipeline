@@ -189,7 +189,7 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	args := config.GetArgs()
 	tmpPath := currentNode.InputData["in1"].(string)
-	if _, err := os.Stat(currentNode.InputData["in1"].(string)); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(tmpPath); errors.Is(err, os.ErrNotExist) {
 		tmpPath = path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
 		tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
 		os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
@@ -336,6 +336,45 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			}
 			tableCols = append(tableCols, tableCol)
 		}
+		if len(tableCols) == 0 {
+			log.Infof("数据表检索失败, 开始自动创建数据表")
+			//新建表
+			columns := records[0]
+			tableScheamArr := make([]string, 0)
+			for i := 1; i < len(columns); i++ {
+				tableScheamArr = append(tableScheamArr, "\""+string(columns[i])+"\""+" "+"varchar")
+
+			}
+			tableScheamStr := strings.Join(tableScheamArr, ",")
+			tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableScheamStr)
+			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
+			_, err := db.Exec(tableDropStr)
+			if err != nil {
+				log.Infof("删除原表失败")
+				return err
+			}
+			_, err = db.Exec(tableCreateStr)
+			if err != nil {
+				log.Infof("创建表失败")
+				return err
+			}
+			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
+			colRows, err := db.Query(tableColumnStr)
+			if err != nil {
+				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
+				return err
+			}
+			defer colRows.Close()
+			for colRows.Next() {
+				var tableCol pgDataCol
+				err = colRows.Scan(&tableCol.Name, &tableCol.Type)
+				if err != nil {
+					log.Infof("数据表检索失败, 请确认要写入的表是否存在")
+					return err
+				}
+				tableCols = append(tableCols, tableCol)
+			}
+		}
 		headers := make([]string, 0)
 		for _, col := range tableCols {
 			headers = append(headers, "\""+col.Name+"\"")
@@ -417,7 +456,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("追加写入表失败")
+					log.Infof("追加写入表失败：%s", err.Error())
 					return err
 				}
 			}

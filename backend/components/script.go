@@ -27,6 +27,7 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	stdout, err := cmd.Output()
 	if err != nil {
 		log.Infof("can not run script with error: %s", err.Error())
+		log.Infof("error detail: %s", stdout)
 		return map[string]interface{}{}, nil
 	}
 	outs := []scriptData{}
@@ -93,6 +94,7 @@ func getScriptOutputData(outputs []scriptData, currentNode Node) map[string]inte
 		} else {
 			break
 		}
+		idx += 1
 	}
 	return outputDatas
 }
