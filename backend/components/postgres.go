@@ -3,6 +3,7 @@ package components
 import (
 	"database/sql"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -64,9 +65,10 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	// }
 	tableQueryStr := ""
 	if len(currentNode.Config["sql"].(string)) == 0 {
-		tableQueryStr = fmt.Sprintf("SELECT * FROM %s.%s", currentNode.Config["schema"].(string), currentNode.Config["table"].(string))
+		tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
+		tableQueryStr = fmt.Sprintf("SELECT * FROM %s.%s", currentNode.Config["schema"].(string), tablename)
 	} else {
-		tableQueryStr = currentNode.Config["sql"].(string)
+		tableQueryStr = loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	}
 	rows, err := db.Query(tableQueryStr)
 	if err != nil {
@@ -175,7 +177,7 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 		log.Infof("数据库测试连接失败，请检查配置")
 		return map[string]interface{}{}, nil
 	}
-	tableQueryStr := currentNode.Config["sql"].(string)
+	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	_, err = db.Exec(tableQueryStr)
 	if err != nil {
 		log.Infof("数据表执行sql语句失败")
@@ -186,13 +188,16 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 
 func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	args := config.GetArgs()
-	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
-	tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
-	os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
-	storageErr := storage.FGetObject(tmpKey, tmpPath)
-	if storageErr != nil {
-		log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
-		return map[string]interface{}{}, nil
+	tmpPath := currentNode.InputData["in1"].(string)
+	if _, err := os.Stat(currentNode.InputData["in1"].(string)); errors.Is(err, os.ErrNotExist) {
+		tmpPath = path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
+		tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
+		os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
+		storageErr := storage.FGetObject(tmpKey, tmpPath)
+		if storageErr != nil {
+			log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
+			return map[string]interface{}{}, nil
+		}
 	}
 	csvFile, err := os.Open(tmpPath)
 	if err != nil {
@@ -233,7 +238,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		return err
 	}
 
-	tablename := currentNode.Config["table"].(string)
+	tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
 	schema := currentNode.Config["databaseChoose"].(string)
 	chunksizeRaw := currentNode.Config["chunksize"].(string)
 	mode := currentNode.Config["mode"].(string)

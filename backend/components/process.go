@@ -2,6 +2,7 @@ package components
 
 import (
 	"goPipeline/utils"
+	"goPipeline/variables"
 	"strings"
 )
 
@@ -71,4 +72,29 @@ func dataSyncMain(currentNode Node, inputData RequestData) (map[string]interface
 		}
 	}
 	return result, nil
+}
+
+func globalVariableSetterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	varname := currentNode.Config["name"].(string)
+	variables.GlobalVariables[varname] = currentNode.InputData["in1"]
+	return map[string]interface{}{"out1": "success"}, nil
+}
+
+func globalVariableGetterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	varname := currentNode.Config["name"].(string)
+	if val, ok := variables.GlobalVariables[varname]; ok {
+		return map[string]interface{}{"out1": val}, nil
+	} else {
+		return map[string]interface{}{}, nil
+	}
+}
+
+func globalVariablDeleterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	varname := currentNode.Config["name"].(string)
+	if _, ok := variables.GlobalVariables[varname]; ok {
+		delete(variables.GlobalVariables, varname)
+		return map[string]interface{}{"out1": "success"}, nil
+	} else {
+		return map[string]interface{}{}, nil
+	}
 }

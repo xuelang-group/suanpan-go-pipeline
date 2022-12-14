@@ -10,6 +10,7 @@ import (
 
 type DataConnectorComponent struct {
 	DefaultComponents
+	Type string
 }
 
 func (c *DataConnectorComponent) CallHandler(r stream.Request) {
@@ -29,5 +30,5 @@ func (c *DataConnectorComponent) InitHandler() {
 }
 
 func (c *DataConnectorComponent) SioHandler() {
-	go web.RunWeb()
+	go web.RunWeb(c.Type)
 }

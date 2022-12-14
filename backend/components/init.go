@@ -1,9 +1,12 @@
 package components
 
 import (
+	"bytes"
 	"goPipeline/utils"
+	"goPipeline/variables"
 	"strings"
 	"sync"
+	"text/template"
 
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -54,6 +57,14 @@ func (c *Node) Init(nodeType string) {
 		c.main = jsonExtractorMain
 	case "DataSync":
 		c.main = dataSyncMain
+	case "GlobalVariableSetter":
+		c.main = globalVariableSetterMain
+	case "GlobalVariableGetter":
+		c.main = globalVariableGetterMain
+	case "GlobalVariableDeleter":
+		c.main = globalVariablDeleterMain
+	case "CsvDownloader":
+		c.main = csvDownloaderMain
 	case "ExecutePythonScript":
 		c.main = pyScriptMain
 	case "PostgresReader":
@@ -156,3 +167,18 @@ func UpdateInput(currentNode Node, inputData RequestData, wg *sync.WaitGroup, st
 // 		}
 // 	}
 // }
+
+func loadParameter(parameter string, vars map[string]interface{}) string {
+	paramT := template.New("parameterLoader")
+	paramT, err := paramT.Parse(parameter)
+	if err != nil {
+		log.Infof("无法正常载入参数：%s", parameter)
+		return parameter
+	}
+	var result bytes.Buffer
+	for k, v := range variables.GlobalVariables {
+		vars[k] = v
+	}
+	paramT.Execute(&result, vars)
+	return result.String()
+}

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"goPipeline/components"
 	"goPipeline/utils"
+	"goPipeline/variables"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -33,20 +33,20 @@ type Graph struct {
 	key            string
 }
 
-func (g *Graph) Init() {
+func (g *Graph) Init(appType string) {
 	// 获取环境变量
 	e := config.GetEnv()
 	// 获取命令行参数
 	args := config.GetArgs()
 	g.path = path.Join(args["--storage-oss-temp-store"], "studio", e.SpUserId, "configs", e.SpAppId, e.SpNodeId, "graph.json")
 	g.key = strings.Join([]string{"studio", e.SpUserId, "configs", e.SpAppId, e.SpNodeId, "graph.json"}, "/")
-	g.componentsInit()
+	g.componentsInit(appType)
 	g.graphInit()
 	g.nodesInit()
+	variables.GlobalVariables = make(map[string]interface{})
 }
 
 func (g *Graph) graphInit() {
-	log.Info("Init function not implement.")
 	err := storage.FGetObject(g.key, g.path)
 	if err != nil {
 		log.Info("Fail to Load Config File, init with default value...")
@@ -228,13 +228,15 @@ func (g *Graph) Stop() {
 	close(g.stopChan)
 }
 
-func (g *Graph) componentsInit() {
-	files, err := ioutil.ReadDir("configs")
+func (g *Graph) componentsInit(appType string) {
+	files, err := os.ReadDir("configs")
 	if err != nil {
 		log.Error(err.Error())
 	}
+	componentsToLoad := make(map[string][]string)
+	componentsToLoad["DataConnector"] = []string{"streamConnector.yml", "postgres.yml", "script.yml", "dataProcess.yml"}
 	for _, f := range files {
-		if strings.HasSuffix(f.Name(), ".yml") {
+		if strings.HasSuffix(f.Name(), ".yml") && utils.SlicesContain(componentsToLoad[appType], f.Name()) {
 			if f.Name() == "streamConnector.yml" {
 				componentConfig := []utils.Component{}
 				nodeInfoString, _ := base64.StdEncoding.DecodeString(os.Getenv("SP_NODE_INFO"))

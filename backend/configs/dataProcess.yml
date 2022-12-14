@@ -27,3 +27,57 @@
       default:
         - id: "out1"
           name: "out1"
+- type: process
+  typeLabel: 逻辑处理
+  name: 全局变量设置
+  key: GlobalVariableSetter
+  helpUrl:
+  parameters:
+    - key: name
+      name: 变量名称
+      type: inputString
+      required: True
+      default: ""
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1
+- type: process
+  typeLabel: 逻辑处理
+  name: 全局变量获取
+  key: GlobalVariableGetter
+  helpUrl:
+  parameters:
+    - key: name
+      name: 变量名称
+      type: inputString
+      required: True
+      default: ""
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1
+- type: process
+  typeLabel: 逻辑处理
+  name: 全局变量清除
+  key: GlobalVariableDeleter
+  helpUrl:
+  parameters:
+    - key: name
+      name: 变量名称
+      type: inputString
+      required: True
+      default: ""
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1
