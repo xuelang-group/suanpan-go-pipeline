@@ -31,7 +31,8 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 
 	Url, err := url.Parse("http://0.0.0.0:8080/data/?inputdata=fdsf&script=scr")
 	if err != nil {
-		panic(err.Error())
+		log.Infof("can not run script with error: %s", err.Error())
+		return map[string]interface{}{}, nil
 	}
 	params.Set("inputdata", inputdata)
 	params.Set("script", script)
