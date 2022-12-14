@@ -1,13 +1,10 @@
-from fastapi import FastAPI
-
-app = FastAPI()
-# inputdata = {"data":"1","type":"json"}
-# script = "# 输入端口数据通过inputs[n]来引用n从0开始:\n# 输处端口数据放入outputs，outputs为列表，按端口顺序放入数据\n# outputs.append(int(inputs[0])+1)\noutputs.append(int(inputs[0])+2)"
-# nodeid = ""
 import json
 import argparse
-# import pandas
-
+import pandas
+import requests
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI()
 
 functionSting = '''
 def runScript(inputs):
@@ -15,7 +12,6 @@ def runScript(inputs):
     %s
     return outputs
 '''
-
 def defaultLoad(x):
     return x
 
@@ -48,10 +44,45 @@ typeMappings = {
     bool: "json"
 }
 
+
+functionSting = '''
+def runScript(inputs):
+    outputs = []
+    %s
+    return outputs
+'''
+def getGlobalVar(name):
+    r = requests.get('http://0.0.0.0:8888/variable', params={"name": name})
+    return json.loads(r.content)["data"]
+
+def setGlobalVar(name, data):
+    r = requests.post('http://0.0.0.0:8888/variable', params={"name": name}, json=data)
+    return json.loads(r.content)
+
+def delGlobalVar(name):
+    r = requests.delete('http://0.0.0.0:8888/variable', params={"name": name})
+    return json.loads(r.content)
+
 def run(inputs=None, script=""):
     exec(functionSting % script.replace("\n", "\n    "), globals())
     loadedInputs = []
-    print("ly---")
+    for input in inputs:
+        input = json.loads(eval("'{}'".format(input)))
+        loadedInputs.append(loadMethods[input["type"]](input["data"]))
+    outputs = runScript(loadedInputs)
+    dumpedOutputs = []
+    for output in outputs:
+        if type(output) in dumpMethods:
+            dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
+        elif not output:
+            dumpedOutputs.append({"data": output, "type": "json"})
+        else:
+            raise Exception(f"type of {output} is not supported.")
+    return json.dumps(dumpedOutputs)
+
+def run(inputs=None, script=""):
+    exec(functionSting % script.replace("\n", "\n    "), globals())
+    loadedInputs = []
 
     for input in inputs:
         # print(input)
@@ -71,18 +102,13 @@ def run(inputs=None, script=""):
 
 @app.get("/data/")
 async def getInputdata(inputdata, script):
-    print(inputdata)#{"data":"1","type":"json"},{"data":"2","type":"json"}
-    print(script)
     tmp = inputdata.split("},")
     if len(tmp) > 1:
         for i in range(len(tmp) - 1):
             tmp[i] = tmp[i] + "}"
-    # print(tmp)
     result = run(tmp, script)
     print(result)
-    # return {
-    #     "input": inputdata,
-    #     "script": script
-    # }
-
     return result
+
+if __name__=="__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8080)

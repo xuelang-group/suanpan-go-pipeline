@@ -15,6 +15,11 @@ import (
 )
 
 func main() {
+	cmdPython := exec.Command("python3", "scripts/pyRuntime.py")
+	errPython := cmdPython.Start()
+	if errPython != nil {
+		log.Errorf("启动fastapi失败，失败原因：%s",errPython.Error())
+	}
 	if val, ok := config.GetArgs()["--__python__pkgs"]; ok {
 		if len(val) > 0 {
 			for _, pkg := range strings.Split(val, ",") {

@@ -2,7 +2,6 @@ package components
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -38,11 +37,9 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	//如果参数中有中文参数,这个方法会进行URLEncode
 	Url.RawQuery = params.Encode()
 	urlPath := Url.String()
-	fmt.Println(urlPath)
 	resp, err := http.Get(urlPath)
 	defer resp.Body.Close()
 	stdout, err := ioutil.ReadAll(resp.Body)
-	fmt.Println(string(stdout))
 	// cmdStrings := make([]string, 0)
 	// cmdStrings = append(cmdStrings, "scripts/pyRuntime.py")
 	// for _, inputString := range inputStrings {
