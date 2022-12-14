@@ -102,6 +102,7 @@ func RunWeb(appType string) {
 	})
 
 	server.OnEvent("/", "process.run", func(s socketio.Conn, msg interface{}) RespondMsg {
+		//传入单步运行的模式，进行运行
 		id := util.GenerateUUID()
 		go graph.GraphInst.Run(map[string]string{}, id, "", server, true)
 		return RespondMsg{true, nil}

@@ -48,6 +48,6 @@ func main() {
 		panic("未提供启动组件名称")
 	}
 	comp.InitHandler()
-	comp.SioHandler()
+	comp.SioHandler() 
 	app.Run(comp.CallHandler)
 }
