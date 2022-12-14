@@ -63,6 +63,8 @@ func (c *Node) Init(nodeType string) {
 		c.main = globalVariableGetterMain
 	case "GlobalVariableDeleter":
 		c.main = globalVariablDeleterMain
+	case "CsvDownloader":
+		c.main = csvDownloaderMain
 	case "ExecutePythonScript":
 		c.main = pyScriptMain
 	case "PostgresReader":

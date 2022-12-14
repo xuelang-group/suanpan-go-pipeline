@@ -3,6 +3,7 @@ package components
 import (
 	"database/sql"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -187,13 +188,16 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 
 func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	args := config.GetArgs()
-	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
-	tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
-	os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
-	storageErr := storage.FGetObject(tmpKey, tmpPath)
-	if storageErr != nil {
-		log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
-		return map[string]interface{}{}, nil
+	tmpPath := currentNode.InputData["in1"].(string)
+	if _, err := os.Stat(currentNode.InputData["in1"].(string)); errors.Is(err, os.ErrNotExist) {
+		tmpPath = path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
+		tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
+		os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
+		storageErr := storage.FGetObject(tmpKey, tmpPath)
+		if storageErr != nil {
+			log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
+			return map[string]interface{}{}, nil
+		}
 	}
 	csvFile, err := os.Open(tmpPath)
 	if err != nil {
