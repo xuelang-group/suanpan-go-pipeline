@@ -124,6 +124,7 @@ func getScriptOutputData(outputs []scriptData, currentNode Node) map[string]inte
 		} else {
 			break
 		}
+		idx += 1
 	}
 	return outputDatas
 }
