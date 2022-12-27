@@ -69,13 +69,23 @@ func streamOutMain(currentNode Node, inputData RequestData) (map[string]interfac
 }
 
 func sendOutput(currentNode Node, inputData RequestData) {
+	// log.Infof("ly--current type %s", currentNode.Config)
 	outputData := saveOutputData(currentNode)
+	// log.Infof("ly---out---%s", outputData)
+	// log.Infof("ly---out1---%s", outputData[:len(outputData)-9])
 	id := inputData.ID
 	extra := inputData.Extra
 	r := stream.Request{ID: id, Extra: extra}
-	r.Send(map[string]string{
-		strings.Replace(currentNode.Key, "outputData", "out", -1): outputData,
-	})
+	if strings.Contains(outputData, ".csv") {
+		r.Send(map[string]string{
+			strings.Replace(currentNode.Key, "outputData", "out", -1): outputData[:len(outputData)-9],
+		})
+	} else {
+		r.Send(map[string]string{
+			strings.Replace(currentNode.Key, "outputData", "out", -1): outputData,
+		})
+	}
+
 }
 
 func saveAsString(outputData interface{}) string {
