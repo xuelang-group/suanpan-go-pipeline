@@ -65,22 +65,22 @@ def delGlobalVar(name):
     r = requests.delete('http://0.0.0.0:8888/variable', params={"name": name})
     return json.loads(r.content)
 
-def run(inputs=None, script=""):
-    exec(functionSting % script.replace("\n", "\n    "), globals())
-    loadedInputs = []
-    for input in inputs:
-        input = json.loads(eval("'{}'".format(input)))
-        loadedInputs.append(loadMethods[input["type"]](input["data"]))
-    outputs = runScript(loadedInputs)
-    dumpedOutputs = []
-    for output in outputs:
-        if type(output) in dumpMethods:
-            dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
-        elif not output:
-            dumpedOutputs.append({"data": output, "type": "json"})
-        else:
-            raise Exception(f"type of {output} is not supported.")
-    return json.dumps(dumpedOutputs)
+# def run(inputs=None, script=""):
+#     exec(functionSting % script.replace("\n", "\n    "), globals())
+#     loadedInputs = []
+#     for input in inputs:
+#         input = json.loads(eval("'{}'".format(input)))
+#         loadedInputs.append(loadMethods[input["type"]](input["data"]))
+#     outputs = runScript(loadedInputs)
+#     dumpedOutputs = []
+#     for output in outputs:
+#         if type(output) in dumpMethods:
+#             dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
+#         elif not output:
+#             dumpedOutputs.append({"data": output, "type": "json"})
+#         else:
+#             raise Exception(f"type of {output} is not supported.")
+#     return json.dumps(dumpedOutputs)
 
 def run(inputs=None, script=""):
     exec(functionSting % script.replace("\n", "\n    "), globals())
@@ -97,6 +97,8 @@ def run(inputs=None, script=""):
     for output in outputs:
         if type(output) in dumpMethods:
             dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
+        elif not output:
+            dumpedOutputs.append({"data": output, "type": "json"})
         else:
             raise Exception(f"type of {output} is not supported.")
     return dumpedOutputs
