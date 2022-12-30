@@ -22,8 +22,8 @@
   typeLabel: 常用工具
   category: csv
   categoryLabel: csv处理
-  name: Csv读取
-  key: CsvFileReader
+  name: Csv转Dataframe
+  key: CsvToDataFrame
   helpUrl:
   parameters:
     - key:

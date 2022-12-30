@@ -27,7 +27,8 @@ func csvDownloaderMain(currentNode Node, inputData RequestData) (map[string]inte
 	}
 	return map[string]interface{}{"out1": tmpPath}, nil
 }
-func CsvFileReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+
+func CsvToDataFrameMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	//直接传递给下游组件dataframe
 	args := config.GetArgs()
 	tmpPath := currentNode.InputData["in1"].(string)
