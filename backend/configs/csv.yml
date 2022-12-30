@@ -20,11 +20,14 @@
         name: out1
 - type: tools
   typeLabel: 常用工具
-  category: csv读取
-  categoryLabel: csv读取
+  category: csv
+  categoryLabel: csv处理
   name: Csv读取
-  key: CsvReader
+  key: CsvFileReader
   helpUrl:
+  parameters:
+    - key:
+      name:
   ports:
     in:
       - id: in1
