@@ -67,6 +67,8 @@ func (c *Node) Init(nodeType string) {
 		c.main = csvDownloaderMain
 	case "CsvToDataFrame":
 		c.main = CsvToDataFrameMain
+	case "DataFrameToCsv":
+		c.main = DataFrameToCsvMain
 	case "ExecutePythonScript":
 		c.main = pyScriptMain
 	case "PostgresReader":

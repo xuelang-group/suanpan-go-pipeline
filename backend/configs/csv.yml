@@ -35,3 +35,20 @@
     out:
       - id: out1
         name: out1
+- type: tools
+  typeLabel: 常用工具
+  category: csv
+  categoryLabel: csv处理
+  name: Dataframe转Csv
+  key: DataFrameToCsv
+  helpUrl:
+  parameters:
+    - key:
+      name:
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1

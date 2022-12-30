@@ -1,11 +1,15 @@
 package components
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
+	"github.com/go-gota/gota/dataframe"
+	"github.com/go-gota/gota/series"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
@@ -16,6 +20,7 @@ func csvDownloaderMain(currentNode Node, inputData RequestData) (map[string]inte
 	args := config.GetArgs()
 	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
 	tmpKey := currentNode.InputData["in1"].(string)
+	log.Infof("ly---tmpKey1 %s", tmpKey)
 	if needBasename {
 		tmpKey = path.Join(currentNode.InputData["in1"].(string), "data.csv")
 	}
@@ -25,6 +30,7 @@ func csvDownloaderMain(currentNode Node, inputData RequestData) (map[string]inte
 		log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
 		return map[string]interface{}{}, nil
 	}
+	log.Infof("ly---tmpKey2 %s", tmpKey)
 	return map[string]interface{}{"out1": tmpPath}, nil
 }
 
@@ -57,4 +63,34 @@ func CsvToDataFrameMain(currentNode Node, inputData RequestData) (map[string]int
 	df := dataframe.ReadCSV(csvFile)
 	log.Infof("ly---df--%s", df)
 	return map[string]interface{}{"out1": df}, nil
+}
+func DataFrameToCsvMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	//dataframe转成string传递给流输出组件
+	df := currentNode.InputData["in1"].(dataframe.DataFrame)
+	index := 0
+	idxSeries := df.Rapply(func(s series.Series) series.Series {
+		index++
+		return series.Ints(index)
+
+	})
+	df = df.Mutate(idxSeries.Col("X0")).
+		Rename("index", "X0")
+	colNames := make([]string, 0, len(df.Names()))
+	colNames = append(colNames, df.Names()[len(df.Names())-1])
+	dataCols := df.Names()[0 : len(df.Names())-1]
+	colNames = append(colNames, dataCols...)
+	df = df.Select(colNames)
+	log.Infof("ly--df--123--%s", df)
+	tmpPath := "data.csv"
+	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/out1", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId)
+	os.Remove(tmpPath)
+	file, err := os.Create(tmpPath)
+	if err != nil {
+		log.Error("无法创建临时文件")
+		errors.New("无法创建临时文件")
+	}
+	df.WriteCSV(file)
+	storage.FPutObject(fmt.Sprintf("%s/data.csv", tmpKey), tmpPath)
+
+	return map[string]interface{}{"out1": tmpKey}, nil
 }
