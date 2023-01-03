@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"goPipeline/components"
 	"goPipeline/utils"
+	"goPipeline/variables"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -23,6 +23,7 @@ import (
 type Graph struct {
 	Status         uint // 0: edit 1: deploy
 	PipelineStatus uint // 0: stop 1: running
+	// ProcessMode	   uint // 1: 全部运行 2: 运行单个节点 3：停止运行
 	Nodes          []components.Node
 	Components     []utils.Component
 	Config         utils.GraphConfig
@@ -33,24 +34,24 @@ type Graph struct {
 	key            string
 }
 
-func (g *Graph) Init() {
+func (g *Graph) Init(appType string) {
 	// 获取环境变量
 	e := config.GetEnv()
 	// 获取命令行参数
 	args := config.GetArgs()
 	g.path = path.Join(args["--storage-oss-temp-store"], "studio", e.SpUserId, "configs", e.SpAppId, e.SpNodeId, "graph.json")
 	g.key = strings.Join([]string{"studio", e.SpUserId, "configs", e.SpAppId, e.SpNodeId, "graph.json"}, "/")
-	g.componentsInit()
+	g.componentsInit(appType)
 	g.graphInit()
 	g.nodesInit()
+	variables.GlobalVariables = make(map[string]interface{})
 }
 
 func (g *Graph) graphInit() {
-	log.Info("Init function not implement.")
 	err := storage.FGetObject(g.key, g.path)
 	if err != nil {
 		log.Info("Fail to Load Config File, init with default value...")
-		g.Config = utils.GraphConfig{}
+		g.Config = utils.GraphConfig{Scale: 1, Connectors: []utils.Connector{}, Nodes: []utils.NodeConfig{}}
 	} else {
 		jsonFile, err := os.Open(g.path)
 		if err != nil {
@@ -93,7 +94,14 @@ func (g *Graph) nodesInit() {
 		node.Config = params
 		node.InputData = make(map[string]interface{})
 		node.OutputData = make(map[string]interface{})
-		if node.Key == "ExecutePythonScript" {
+		supportPortConfig := []string{"ExecutePythonScript", "DataSync"}
+		nodeSupportPortConfig := false
+		for _, key := range supportPortConfig {
+			if key == node.Key {
+				nodeSupportPortConfig = true
+			}
+		}
+		if nodeSupportPortConfig {
 			for _, port := range node.Config["inPorts"].([]interface{}) {
 				port := port.(map[string]interface{})
 				node.InputData[port["id"].(string)] = nil
@@ -126,9 +134,9 @@ func (g *Graph) nodesInit() {
 			if node.Id == connection.Src["uuid"] {
 				if !g.checkNode(connection.Tgt["uuid"], node.NextNodes) {
 					node.NextNodes = append(node.NextNodes, g.findNode(connection.Tgt["uuid"]))
-					if !utils.SlicesContain(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"]) {
-						node.PortConnects[connection.Src["port"]] = append(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"])
-					}
+				}
+				if !utils.SlicesContain(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"]) {
+					node.PortConnects[connection.Src["port"]] = append(node.PortConnects[connection.Src["port"]], connection.Tgt["uuid"]+"-"+connection.Tgt["port"])
 				}
 			}
 			if node.Id == connection.Tgt["uuid"] {
@@ -169,23 +177,25 @@ func (g *Graph) Update(newGraph utils.GraphConfig) {
 }
 
 func (g *Graph) Run(inputData map[string]string, id string, extra string, server *socketio.Server, useCache bool) {
-	log.Info("Start To Run Graph.")
+	log.Info("流程图开始运行")
 	g.PipelineStatus = 1
 	g.wg = sync.WaitGroup{}
 	g.stopChan = make(chan bool)
 	for _, node := range g.Nodes {
 		if len(node.PreviousNodes) == 0 {
-			g.wg.Add(1)
 			if strings.HasPrefix(node.Key, "in") {
 				if data, ok := inputData[strings.Replace(node.Key, "inputData", "in", -1)]; ok {
+					g.wg.Add(1)
 					go node.Run(node, components.RequestData{Data: data, ID: id, Extra: extra}, &g.wg, g.stopChan, server)
 				} else {
 					if useCache {
+						g.wg.Add(1)
 						go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
 					}
 				}
 			} else {
 				if len(node.InputData) == 0 {
+					g.wg.Add(1)
 					go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
 				}
 			}
@@ -194,11 +204,11 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 	g.wg.Wait()
 	g.PipelineStatus = 0
 	close(g.stopChan)
-	log.Info("Graph Run Done.")
+	log.Info("流程图运行结束")
 }
 
 func (g *Graph) UpdateInputs(inputData map[string]string, id string, extra string) {
-	log.Info("Start To Update Inputs.")
+	log.Info("输入数据开始更新")
 	g.wg = sync.WaitGroup{}
 	g.stopChan = make(chan bool)
 	for _, node := range g.Nodes {
@@ -211,7 +221,7 @@ func (g *Graph) UpdateInputs(inputData map[string]string, id string, extra strin
 	}
 	g.wg.Wait()
 	close(g.stopChan)
-	log.Info("Update Inputs Done.")
+	log.Info("输入数据结束更新")
 }
 
 func (g *Graph) Stop() {
@@ -219,13 +229,15 @@ func (g *Graph) Stop() {
 	close(g.stopChan)
 }
 
-func (g *Graph) componentsInit() {
-	files, err := ioutil.ReadDir("configs")
+func (g *Graph) componentsInit(appType string) {
+	files, err := os.ReadDir("configs")
 	if err != nil {
 		log.Error(err.Error())
 	}
+	componentsToLoad := make(map[string][]string)
+	componentsToLoad["DataConnector"] = []string{"streamConnector.yml", "postgres.yml", "script.yml", "dataProcess.yml", "csv.yml"}
 	for _, f := range files {
-		if strings.HasSuffix(f.Name(), ".yml") {
+		if strings.HasSuffix(f.Name(), ".yml") && utils.SlicesContain(componentsToLoad[appType], f.Name()) {
 			if f.Name() == "streamConnector.yml" {
 				componentConfig := []utils.Component{}
 				nodeInfoString, _ := base64.StdEncoding.DecodeString(os.Getenv("SP_NODE_INFO"))

@@ -6,7 +6,7 @@ type Data struct {
 }
 
 type GraphConfig struct {
-	Htime      uint         `json:"htime"`
+	Htime      uint         `json:"htime,omitempty"`
 	Scale      float32      `json:"scale"`
 	X          float64      `json:"x"`
 	Y          float64      `json:"y"`

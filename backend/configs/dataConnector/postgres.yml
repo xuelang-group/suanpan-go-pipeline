@@ -38,6 +38,10 @@
       name: schema
       type: inputString
       default: public
+    - key: sql
+      name: sql
+      type: inputString
+      default: ""
   ports:
     in:
       - id: in1
@@ -144,7 +148,7 @@
     - key: chunksize
       name: 每次写入最大行数
       type: inputString
-      default: "100000"
+      default: "10000"
   ports:
     in:
       - id: in1

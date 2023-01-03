@@ -1,8 +1,10 @@
 package web
 
 import (
+	"encoding/json"
 	"goPipeline/graph"
 	"goPipeline/utils"
+	"goPipeline/variables"
 	"net/http"
 
 	socketio "github.com/googollee/go-socket.io"
@@ -21,9 +23,65 @@ func sendToStream() {
 	})
 }
 
-func RunWeb() {
+func variable(w http.ResponseWriter, req *http.Request) {
+	name := req.URL.Query().Get("name")
+	if len(name) == 0 {
+		respond := RespondMsg{Success: false, Data: nil}
+		jsonResp, err := json.Marshal(respond)
+		if err != nil {
+			log.Errorf("Error happened in JSON marshal. Err: %s", err.Error())
+		}
+		w.Write(jsonResp)
+		return
+	}
+	switch req.Method {
+	case "GET":
+		if val, ok := variables.GlobalVariables[name]; ok {
+			respond := RespondMsg{Success: true, Data: val}
+			jsonResp, err := json.Marshal(respond)
+			if err != nil {
+				log.Errorf("Error happened in JSON marshal. Err: %s", err.Error())
+			}
+			w.Write(jsonResp)
+			return
+		} else {
+			respond := RespondMsg{Success: true, Data: nil}
+			jsonResp, err := json.Marshal(respond)
+			if err != nil {
+				log.Errorf("Error happened in JSON marshal. Err: %s", err.Error())
+			}
+			w.Write(jsonResp)
+			return
+		}
+	case "POST":
+		var data interface{}
+		err := json.NewDecoder(req.Body).Decode(&data)
+		if err != nil {
+			log.Errorf("Error happened in JSON decoding. Err: %s", err.Error())
+			respond := RespondMsg{Success: false, Data: nil}
+			jsonResp, _ := json.Marshal(respond)
+			w.Write(jsonResp)
+			return
+		}
+		variables.GlobalVariables[name] = data
+		respond := RespondMsg{Success: true, Data: nil}
+		jsonResp, _ := json.Marshal(respond)
+		w.Write(jsonResp)
+		return
+	case "DELETE":
+		delete(variables.GlobalVariables, name)
+		respond := RespondMsg{Success: true, Data: nil}
+		jsonResp, _ := json.Marshal(respond)
+		w.Write(jsonResp)
+		return
+	default:
+	}
 
-	graph.GraphInst.Init()
+}
+
+func RunWeb(appType string) {
+
+	graph.GraphInst.Init(appType)
 
 	server.OnConnect("/", func(s socketio.Conn) error {
 		log.Infof("connected: %s", s.ID())
@@ -44,6 +102,7 @@ func RunWeb() {
 	})
 
 	server.OnEvent("/", "process.run", func(s socketio.Conn, msg interface{}) RespondMsg {
+		//传入单步运行的模式，进行运行
 		id := util.GenerateUUID()
 		go graph.GraphInst.Run(map[string]string{}, id, "", server, true)
 		return RespondMsg{true, nil}
@@ -97,6 +156,7 @@ func RunWeb() {
 
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.FileServer(http.Dir("statics")))
+	http.HandleFunc("/variable", variable)
 
 	http.ListenAndServe("0.0.0.0:"+WebServerPort, nil)
 }

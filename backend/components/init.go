@@ -1,9 +1,12 @@
 package components
 
 import (
-	"fmt"
+	"bytes"
+	"goPipeline/utils"
+	"goPipeline/variables"
 	"strings"
 	"sync"
+	"text/template"
 
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -16,21 +19,22 @@ type NodeAction interface {
 }
 
 type Node struct {
-	PreviousNodes []*Node
-	NextNodes     []*Node
-	InputData     map[string]interface{}
-	OutputData    map[string]interface{}
-	PortConnects  map[string][]string
-	Config        map[string]interface{}
-	Id            string
-	Key           string
-	Run           func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server)
-	dumpOutput    func(currentNode Node, outputData map[string]interface{})
-	UpdateInput   func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
-	loadInput     func(currentNode Node, inputData RequestData) error
-	main          func(currentNode Node, inputData RequestData) (map[string]interface{}, error)
-	initNode      func(currentNode Node) error
-	Status        int // 0: stoped 1： running 2： finished -1：error
+	TriggeredPorts []string
+	PreviousNodes  []*Node
+	NextNodes      []*Node
+	InputData      map[string]interface{}
+	OutputData     map[string]interface{}
+	PortConnects   map[string][]string
+	Config         map[string]interface{}
+	Id             string
+	Key            string
+	Run            func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server)
+	// dumpOutput    func(currentNode Node, outputData map[string]interface{})
+	UpdateInput func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
+	loadInput   func(currentNode Node, inputData RequestData) error
+	main        func(currentNode Node, inputData RequestData) (map[string]interface{}, error)
+	initNode    func(currentNode Node) error
+	Status      int // 0: stoped 1： running -1：error
 }
 
 type RequestData struct {
@@ -42,7 +46,7 @@ type RequestData struct {
 func (c *Node) Init(nodeType string) {
 	c.Run = Run
 	c.UpdateInput = UpdateInput
-	c.dumpOutput = dumpOutput
+	// c.dumpOutput = dumpOutput
 	switch nodeType {
 	case "StreamIn":
 		c.main = streamInMain
@@ -51,6 +55,16 @@ func (c *Node) Init(nodeType string) {
 		c.main = streamOutMain
 	case "JsonExtractor":
 		c.main = jsonExtractorMain
+	case "DataSync":
+		c.main = dataSyncMain
+	case "GlobalVariableSetter":
+		c.main = globalVariableSetterMain
+	case "GlobalVariableGetter":
+		c.main = globalVariableGetterMain
+	case "GlobalVariableDeleter":
+		c.main = globalVariablDeleterMain
+	case "CsvDownloader":
+		c.main = csvDownloaderMain
 	case "ExecutePythonScript":
 		c.main = pyScriptMain
 	case "PostgresReader":
@@ -68,15 +82,14 @@ func (c *Node) Init(nodeType string) {
 
 func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server) {
 	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Caught:", r)
+		if err := recover(); err != nil {
+			log.Errorf("节点%s(%s)运行异常，错误日志：%s", currentNode.Key, currentNode.Id, err)
 		}
-		// panic("catch me")
+		wg.Done()
 	}()
-	defer wg.Done()
 	select {
 	case <-stopChan:
-		log.Info("Recive stop event")
+		log.Infof("节点%s(%s)运行被中断", currentNode.Key, currentNode.Id)
 	default:
 		receiveInputs := false
 		for _, v := range currentNode.InputData {
@@ -95,14 +108,34 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 					server.BroadcastToNamespace("/", "notify.process.error", map[string]string{currentNode.Id: err.Error()})
 				}
 			} else {
-				currentNode.dumpOutput(currentNode, outputData)
-				currentNode.Status = 2
-				if server != nil {
-					server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: 2})
+				log.Infof("节点%s(%s)运行成功", currentNode.Key, currentNode.Id)
+				readyToRun := make([]string, 0)
+				triggeredPorts := make(map[string][]string)
+				for port, data := range outputData { //map[out1:true]
+					for _, tgt := range currentNode.PortConnects[port] {
+						tgtInfo := strings.Split(tgt, "-")
+						for i := range currentNode.NextNodes {
+							if currentNode.NextNodes[i].Id == tgtInfo[0] {
+								log.Infof("数据下发到节点%s(%s)", currentNode.NextNodes[i].Key, currentNode.NextNodes[i].Id)
+								currentNode.NextNodes[i].InputData[tgtInfo[1]] = data
+								triggeredPorts[currentNode.NextNodes[i].Id] = append(triggeredPorts[currentNode.NextNodes[i].Id], tgtInfo[1])
+								if !utils.SlicesContain(readyToRun, currentNode.NextNodes[i].Id) {
+									readyToRun = append(readyToRun, currentNode.NextNodes[i].Id)
+								}
+							}
+						}
+					}
 				}
-				for _, node := range currentNode.NextNodes {
-					wg.Add(1)
-					go node.Run(*node, RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server)
+				for i := range currentNode.NextNodes {
+					if utils.SlicesContain(readyToRun, currentNode.NextNodes[i].Id) {
+						currentNode.NextNodes[i].TriggeredPorts = triggeredPorts[currentNode.NextNodes[i].Id]
+						wg.Add(1)
+						go currentNode.NextNodes[i].Run(*currentNode.NextNodes[i], RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server)
+					}
+				}
+				currentNode.Status = 0
+				if server != nil {
+					server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: 0})
 				}
 			}
 		}
@@ -122,15 +155,30 @@ func UpdateInput(currentNode Node, inputData RequestData, wg *sync.WaitGroup, st
 	}
 }
 
-func dumpOutput(currentNode Node, outputData map[string]interface{}) {
-	for port, data := range outputData { //map[out1:true]
-		for _, tgt := range currentNode.PortConnects[port] {
-			tgtInfo := strings.Split(tgt, "-")
-			for _, node := range currentNode.NextNodes {
-				if node.Id == tgtInfo[0] {
-					node.InputData[tgtInfo[1]] = data
-				}
-			}
-		}
+// func dumpOutput(currentNode Node, outputData map[string]interface{}) {
+// 	for port, data := range outputData { //map[out1:true]
+// 		for _, tgt := range currentNode.PortConnects[port] {
+// 			tgtInfo := strings.Split(tgt, "-")
+// 			for _, node := range currentNode.NextNodes {
+// 				if node.Id == tgtInfo[0] {
+// 					node.InputData[tgtInfo[1]] = data
+// 				}
+// 			}
+// 		}
+// 	}
+// }
+
+func loadParameter(parameter string, vars map[string]interface{}) string {
+	paramT := template.New("parameterLoader")
+	paramT, err := paramT.Parse(parameter)
+	if err != nil {
+		log.Infof("无法正常载入参数：%s", parameter)
+		return parameter
 	}
+	var result bytes.Buffer
+	for k, v := range variables.GlobalVariables {
+		vars[k] = v
+	}
+	paramT.Execute(&result, vars)
+	return result.String()
 }

@@ -1,0 +1,20 @@
+- type: tools
+  typeLabel: 常用工具
+  category: csv
+  categoryLabel: csv处理
+  name: Csv下载
+  key: CsvDownloader
+  helpUrl:
+  parameters:
+    - key: needBasename
+      name: 流计算输入
+      type: checkbox
+      required: True
+      default: True
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1

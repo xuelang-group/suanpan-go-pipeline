@@ -41,17 +41,20 @@ func loadInput(currentNode Node, inputData string) map[string]interface{} {
 		json.Unmarshal([]byte(inputData), &v)
 		return map[string]interface{}{"out1": v}
 	case "csv":
-		log.Infof("not support json")
-		fallthrough
+		return map[string]interface{}{"out1": inputData}
 	case "image":
-		log.Infof("not support json")
+		log.Infof("not support image")
 		fallthrough
 	case "bool":
-		log.Infof("not support json")
-		fallthrough
+		if inputData == "true" {
+			return map[string]interface{}{"out1": true}
+		} else {
+			return map[string]interface{}{"out1": false}
+		}
 	case "array":
-		log.Infof("not support json")
-		fallthrough
+		var v []interface{}
+		json.Unmarshal([]byte(inputData), &v)
+		return map[string]interface{}{"out1": v}
 	default:
 		return map[string]interface{}{"out1": inputData}
 	}
@@ -95,20 +98,19 @@ func saveOutputData(currentNode Node) string {
 	case "number":
 		return currentNode.InputData["in1"].(string)
 	case "json":
-		log.Infof("not support json")
-		fallthrough
+		output, _ := json.Marshal(currentNode.InputData["in1"])
+		return string(output)
 	case "csv":
-		log.Infof("not support json")
-		fallthrough
+		return currentNode.InputData["in1"].(string)
 	case "image":
-		log.Infof("not support json")
+		log.Infof("not support image")
 		fallthrough
 	case "bool":
-		log.Infof("not support json")
-		fallthrough
+		output, _ := json.Marshal(currentNode.InputData["in1"])
+		return string(output)
 	case "array":
-		log.Infof("not support json")
-		fallthrough
+		output, _ := json.Marshal(currentNode.InputData["in1"])
+		return string(output)
 	default:
 		return saveAsString(currentNode.InputData["in1"])
 	}

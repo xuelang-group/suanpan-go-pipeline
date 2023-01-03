@@ -22,8 +22,9 @@ class SocketIOError extends Error {
 
 class SocketIOClient {
   constructor() {
-    // this.socket = io('http://121.36.246.13:30080', {path: '/proxr/1000001/55920/f35fcb806d3111ed86a2093e9c540696/8888/socket.io', transports: ['websocket'], upgrade: false});
-    this.socket = io({ path: new URL('./socket.io', location.href).pathname, transports: ['websocket'], upgrade: false });
+    this.socket = io('http://10.88.34.184:30080', {path: '/proxr/100026/55182/ac4ad4307b6211ed92a77beb702c7f04/8888/socket.io', transports: ['websocket'], upgrade: false});
+    
+    // this.socket = io({ path: new URL('./socket.io', location.href).pathname, transports: ['websocket'], upgrade: false });
     this.timeout = 30 * 1000;
   }
 
