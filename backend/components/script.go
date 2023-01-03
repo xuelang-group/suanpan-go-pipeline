@@ -75,6 +75,7 @@ func getScriptInputData(currentNode Node) []string {
 		inputData := scriptData{}
 		switch i := v.(type) {
 		case dataframe.DataFrame:
+			os.Mkdir(currentNode.Id, os.ModePerm)
 			tmpPath := currentNode.Id + "/data.csv"
 			os.Remove(tmpPath)
 			file, err := os.Create(tmpPath)
