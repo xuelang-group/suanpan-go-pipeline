@@ -20,16 +20,6 @@ type oracleDataCol struct {
 	Type string
 }
 
-func oracleInit(currentNode Node) error {
-	oracleDataType := map[string]string{"bigint": "int64", "bigserial": "int64",
-		"boolean": "bool", "bytea": "[]uint8", "date": "time.Time",
-		"integer": "int32", "smallint": "int16", "smallserial": "int16",
-		"serial": "int32", "text": "string", "time without time zone": "time.Time",
-		"time with time zone": "time.Time", "timestamp without time zone": "time.Time",
-		"timestamp with time zone": "time.Time", "double precision": "float64", "numeric": "float64"}
-	currentNode.Config["oracleDataType"] = oracleDataType
-	return nil
-}
 func oracleReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	oracleConn := fmt.Sprintf("oracle://%s:%s@%s:%s/%s",
 		currentNode.Config["user"].(string),
@@ -39,12 +29,12 @@ func oracleReaderMain(currentNode Node, inputData RequestData) (map[string]inter
 		currentNode.Config["dbname"].(string))
 	db, err := sql.Open("oracle", oracleConn)
 	if err != nil {
-		log.Infof("数据库连接失败，请检查配置")
+		log.Info("数据库连接失败，请检查配置")
 		return map[string]interface{}{}, nil
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置")
+		log.Info("数据库测试连接失败，请检查配置")
 		return map[string]interface{}{}, nil
 	}
 	tableCols := make([]oracleDataCol, 0)
@@ -57,7 +47,7 @@ func oracleReaderMain(currentNode Node, inputData RequestData) (map[string]inter
 	}
 	rows, err := db.Query(tableQueryStr)
 	if err != nil {
-		log.Infof("数据表检索失败")
+		log.Info("数据表检索失败")
 		return map[string]interface{}{}, nil
 	}
 	columnNames, err := rows.Columns()
@@ -99,7 +89,7 @@ func oracleReaderMain(currentNode Node, inputData RequestData) (map[string]inter
 		}
 		err = rows.Scan(recordP...)
 		if err != nil {
-			log.Infof("数据表数据检索失败")
+			log.Info("数据表数据检索失败")
 			return map[string]interface{}{}, nil
 		}
 		data := make([]string, 0)
