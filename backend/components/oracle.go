@@ -138,3 +138,30 @@ func oracleReaderMain(currentNode Node, inputData RequestData) (map[string]inter
 
 	return map[string]interface{}{"out1": tmpKey}, nil
 }
+
+func oracleExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	oracleConn := fmt.Sprintf("oracle://%s:%s@%s:%s/%s",
+		currentNode.Config["user"].(string),
+		currentNode.Config["password"].(string),
+		currentNode.Config["host"].(string),
+		currentNode.Config["port"].(string),
+		currentNode.Config["dbname"].(string))
+	db, err := sql.Open("oracle", oracleConn)
+
+	if err != nil {
+		log.Info("数据库连接失败，请检查配置")
+		return map[string]interface{}{}, nil
+	}
+	defer db.Close()
+	if err = db.Ping(); err != nil {
+		log.Info("数据库测试连接失败，请检查配置")
+		return map[string]interface{}{}, nil
+	}
+	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
+	_, err = db.Exec(tableQueryStr)
+	if err != nil {
+		log.Info("数据表执行sql语句失败")
+		return map[string]interface{}{}, nil
+	}
+	return map[string]interface{}{"out1": "success"}, nil
+}

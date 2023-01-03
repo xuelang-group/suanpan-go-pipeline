@@ -78,6 +78,8 @@ func (c *Node) Init(nodeType string) {
 		c.initNode = postgresInit
 	case "OracleReader":
 		c.main = oracleReaderMain
+	case "OracleSqlExecutor":
+		c.main = oracleExecutorMain
 	default:
 	}
 }
