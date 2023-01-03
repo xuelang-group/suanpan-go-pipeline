@@ -24,14 +24,14 @@ type Graph struct {
 	Status         uint // 0: edit 1: deploy
 	PipelineStatus uint // 0: stop 1: running
 	// ProcessMode	   uint // 1: 全部运行 2: 运行单个节点 3：停止运行
-	Nodes          []components.Node
-	Components     []utils.Component
-	Config         utils.GraphConfig
-	NodeInfo       utils.NodeInfo
-	stopChan       chan bool
-	wg             sync.WaitGroup
-	path           string
-	key            string
+	Nodes      []components.Node
+	Components []utils.Component
+	Config     utils.GraphConfig
+	NodeInfo   utils.NodeInfo
+	stopChan   chan bool
+	wg         sync.WaitGroup
+	path       string
+	key        string
 }
 
 func (g *Graph) Init(appType string) {
@@ -235,7 +235,7 @@ func (g *Graph) componentsInit(appType string) {
 		log.Error(err.Error())
 	}
 	componentsToLoad := make(map[string][]string)
-	componentsToLoad["DataConnector"] = []string{"streamConnector.yml", "postgres.yml", "script.yml", "dataProcess.yml", "csv.yml"}
+	componentsToLoad["DataConnector"] = []string{"streamConnector.yml", "postgres.yml", "oracle.yml", "script.yml", "dataProcess.yml", "csv.yml"}
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".yml") && utils.SlicesContain(componentsToLoad[appType], f.Name()) {
 			if f.Name() == "streamConnector.yml" {

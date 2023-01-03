@@ -1,0 +1,52 @@
+- type: database
+  typeLabel: 数据库
+  category: read
+  categoryLabel: 数据库读取
+  name: Oracle数据库读取
+  key: OracleReader
+  helpUrl:
+  parameters:
+    - key: host
+      name: 主机名或IP地址
+      type: inputString
+      required: True
+      default: ""
+    - key: port
+      name: 端口
+      type: inputString
+      required: True
+      default: ""
+    - key: user
+      name: 用户名
+      type: inputString
+      required: True
+      default: ""
+    - key: password
+      name: 密码
+      type: inputString
+      required: True
+      default: ""
+    - key: dbname
+      name: 数据库
+      type: inputString
+      default: Oracle
+    - key: table
+      name: 表名
+      type: inputString
+      default: ""
+    - key: schema
+      name: schema
+      type: inputString
+      default: public
+    - key: sql
+      name: sql
+      type: inputString
+      default: ""
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1
+

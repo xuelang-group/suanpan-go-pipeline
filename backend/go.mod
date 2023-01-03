@@ -6,6 +6,7 @@ require (
 	github.com/go-gota/gota v0.12.0
 	github.com/googollee/go-socket.io v1.6.2
 	github.com/lib/pq v1.10.7
+	github.com/sijms/go-ora/v2 v2.5.19
 	github.com/xuelang-group/suanpan-go-sdk v1.0.10
 	gopkg.in/yaml.v3 v3.0.1
 )
