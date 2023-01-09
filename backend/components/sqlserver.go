@@ -3,9 +3,13 @@ package components
 import (
 	"database/sql"
 	"encoding/csv"
+	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -165,4 +169,297 @@ func sqlServerExecutorMain(currentNode Node, inputData RequestData) (map[string]
 		return map[string]interface{}{}, nil
 	}
 	return map[string]interface{}{"out1": "success"}, nil
+}
+
+func sqlServerWriterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	args := config.GetArgs()
+	tmpPath := currentNode.InputData["in1"].(string)
+	if _, err := os.Stat(tmpPath); errors.Is(err, os.ErrNotExist) {
+		tmpPath = path.Join(
+			args[fmt.Sprintf("--storage-%s-temp-store",
+				args["--storage-type"])],
+			currentNode.InputData["in1"].(string),
+			currentNode.Id,
+			"data.csv")
+		tmpKey := path.Join(
+			currentNode.InputData["in1"].(string),
+			"data.csv")
+		os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
+		storageErr := storage.FGetObject(tmpKey, tmpPath)
+		if storageErr != nil {
+			log.Errorf("下载文件 %s 失败, 错误为: %s", tmpKey, storageErr.Error())
+			return map[string]interface{}{}, nil
+		}
+	}
+	csvFile, err := os.Open(tmpPath)
+	if err != nil {
+		log.Errorf("csv 文件 %s 打开失败, 错误为: %s", tmpPath, err.Error())
+		return map[string]interface{}{}, nil
+	}
+	defer func() {
+		csvFile.Close()
+		err = os.Remove(tmpPath)
+		if err != nil {
+			log.Errorf("csv 文件 %s 删除失败, 错误为: %s", tmpPath, err.Error())
+		}
+	}()
+	csvToSqlErr := ReadCsvSaveToSQLServer(csvFile, currentNode)
+	if csvToSqlErr != nil {
+		log.Error("未能正常写入数据库")
+		return map[string]interface{}{}, nil
+	}
+	return map[string]interface{}{"out1": "success"}, nil
+}
+
+func ReadCsvSaveToSQLServer(r io.Reader, currentNode Node) error {
+	csvReader := csv.NewReader(r)
+	records, err := csvReader.ReadAll()
+	if err != nil {
+		return err
+	}
+	//链接数据库
+	sqlServerConn := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s",
+		currentNode.Config["user"].(string),
+		url.QueryEscape(currentNode.Config["password"].(string)),
+		currentNode.Config["host"].(string),
+		currentNode.Config["port"].(string),
+		currentNode.Config["dbname"].(string))
+	db, err := sql.Open("sqlserver", sqlServerConn)
+	if err != nil {
+		log.Info("数据库连接失败，请检查配置")
+		return err
+	}
+	defer db.Close()
+	if err = db.Ping(); err != nil {
+		log.Info("数据库测试连接失败，请检查配置")
+		return err
+	}
+
+	tableName := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
+	schema := currentNode.Config["databaseChoose"].(string)
+	chunkSizeRaw := currentNode.Config["chunkSize"].(string)
+	mode := currentNode.Config["mode"].(string)
+	chunkSize, err := strconv.Atoi(chunkSizeRaw)
+	if err != nil {
+		log.Info("chunkSize设置非数值")
+		return err
+	}
+
+	if strings.Compare(mode, "replace") == 0 {
+		//新建表
+		columns := records[0]
+		tableSchemaArr := make([]string, 0)
+		for i := 1; i < len(columns); i++ {
+			tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar(100)")
+
+		}
+		tableSchemaStr := strings.Join(tableSchemaArr, ",")
+		tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s)", schema, tableName, tableSchemaStr)
+		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tableName)
+		_, err := db.Exec(tableDropStr)
+		if err != nil {
+			log.Infof("删除原表失败%s", err.Error())
+			return err
+		}
+		_, err = db.Exec(tableCreateStr)
+		if err != nil {
+			log.Info(tableCreateStr)
+			log.Infof("创建表失败%s", err.Error())
+			return err
+		}
+		//插入数据
+		l := len(records) - 1
+		n := l/chunkSize + 1
+
+		for iter := 0; iter < n; iter++ {
+			var tableInsertValues string
+			tableInsertArr := make([]string, 0)
+			if iter < n-1 {
+				for i := iter*chunkSize + 1; i < chunkSize*(iter+1)+1; i++ {
+					var rowTmpStr string
+					recordsArr := make([]string, 0)
+					for colIdx, col := range records[i] {
+						if colIdx != 0 {
+							recordsArr = append(recordsArr, "'"+strings.ReplaceAll(col, "'", "''")+"'")
+						}
+					}
+					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
+					tableInsertArr = append(tableInsertArr, rowTmpStr)
+				}
+			} else {
+				for i := iter*chunkSize + 1; i < l+1; i++ {
+					var rowTmpStr string
+					recordsArr := make([]string, 0)
+					for colIdx, col := range records[i] {
+						if colIdx != 0 {
+							recordsArr = append(recordsArr, "'"+strings.ReplaceAll(col, "'", "''")+"'")
+						}
+					}
+					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
+					tableInsertArr = append(tableInsertArr, rowTmpStr)
+				}
+			}
+			if len(tableInsertArr) > 0 {
+				tableInsertValues = strings.Join(tableInsertArr, ",")
+				tableColumns := make([]string, 0)
+				for i := 1; i < len(columns); i++ {
+					tableColumns = append(tableColumns, "\""+string(columns[i])+"\"")
+
+				}
+				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tableName, strings.Join(tableColumns, ","), tableInsertValues)
+				_, err := db.Exec(tableInsertStr)
+				if err != nil {
+					log.Infof("覆盖写入表失败%s", err.Error())
+					return err
+				}
+			}
+		}
+
+	} else {
+		//判断表是否存在并获取表头信息
+		tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s'", tableName)
+		colRows, err := db.Query(tableColumnStr)
+		if err != nil {
+			log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+			return err
+		}
+		tableCols := make([]sqlServerDataCol, 0)
+		defer colRows.Close()
+		for colRows.Next() {
+			var tableCol sqlServerDataCol
+			err = colRows.Scan(&tableCol.Name, &tableCol.Type)
+			if err != nil {
+				log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+				return err
+			}
+			tableCols = append(tableCols, tableCol)
+		}
+		if len(tableCols) == 0 {
+			log.Info("数据表检索失败, 开始自动创建数据表")
+			//新建表
+			columns := records[0]
+			tableSchemaArr := make([]string, 0)
+			for i := 1; i < len(columns); i++ {
+				tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar(100)")
+
+			}
+			tableSchemaStr := strings.Join(tableSchemaArr, ",")
+			tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s)", schema, tableName, tableSchemaStr)
+			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tableName)
+			_, err := db.Exec(tableDropStr)
+			if err != nil {
+				log.Infof("删除原表失败%s", err.Error())
+				return err
+			}
+			_, err = db.Exec(tableCreateStr)
+			if err != nil {
+				log.Info(tableCreateStr)
+				log.Infof("创建表失败%s", err.Error())
+				return err
+			}
+			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s'", tableName)
+			colRows, err := db.Query(tableColumnStr)
+			if err != nil {
+				log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+				return err
+			}
+			defer colRows.Close()
+			for colRows.Next() {
+				var tableCol sqlServerDataCol
+				err = colRows.Scan(&tableCol.Name, &tableCol.Type)
+				if err != nil {
+					log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+					return err
+				}
+				tableCols = append(tableCols, tableCol)
+			}
+		}
+		headers := make([]string, 0)
+		for _, col := range tableCols {
+			headers = append(headers, "\""+col.Name+"\"")
+		}
+		headersTypes := make([]string, 0)
+		for _, col := range tableCols {
+			headersTypes = append(headersTypes, col.Type)
+		}
+		headerToRecords := make(map[string]int)
+		for _, header := range headers {
+			colIdx := -1
+			for colNum, col := range records[0] {
+				if "\""+col+"\"" == header {
+					colIdx = colNum
+				}
+			}
+			headerToRecords[header] = colIdx
+		}
+		if strings.Compare(mode, "clearAndAppend") == 0 {
+			log.Info("开始清空并追加")
+			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, tableName)
+			_, err := db.Exec(tableClearStr)
+			if err != nil {
+				log.Info("清空表失败")
+				return err
+			}
+		}
+		//插入数据
+		l := len(records) - 1
+		n := l/chunkSize + 1
+		for iter := 0; iter < n; iter++ {
+			var tableInsertValues string
+			tableInsertArr := make([]string, 0)
+			if iter < n-1 {
+				for i := iter*chunkSize + 1; i < chunkSize*(iter+1)+1; i++ {
+					var rowTmpStr string
+					recordsArr := make([]string, 0)
+					for ctype := 0; ctype < len(headers); ctype++ {
+						if headerToRecords[headers[ctype]] != -1 {
+							recordIdx := headerToRecords[headers[ctype]]
+							if len(records[i][recordIdx]) == 0 && strings.Compare(headersTypes[ctype], "character varying") != 0 {
+								recordsArr = append(recordsArr, "NULL")
+							} else if len(records[i][recordIdx]) > 0 && strings.Compare(headersTypes[ctype], "integer") == 0 {
+								recordsArr = append(recordsArr, "'"+strings.Split(records[i][recordIdx], ".")[0]+"'")
+							} else {
+								recordsArr = append(recordsArr, "'"+strings.ReplaceAll(records[i][recordIdx], "'", "''")+"'")
+							}
+						} else {
+							recordsArr = append(recordsArr, "NULL")
+						}
+					}
+					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
+					tableInsertArr = append(tableInsertArr, rowTmpStr)
+				}
+			} else {
+				for i := iter*chunkSize + 1; i < l+1; i++ {
+					var rowTmpStr string
+					recordsArr := make([]string, 0)
+					for ctype := 0; ctype < len(headers); ctype++ {
+						if headerToRecords[headers[ctype]] != -1 {
+							recordIdx := headerToRecords[headers[ctype]]
+							if len(records[i][recordIdx]) == 0 && strings.Compare(headersTypes[ctype], "character varying") != 0 {
+								recordsArr = append(recordsArr, "NULL")
+							} else if len(records[i][recordIdx]) > 0 && strings.Compare(headersTypes[ctype], "integer") == 0 {
+								recordsArr = append(recordsArr, "'"+strings.Split(records[i][recordIdx], ".")[0]+"'")
+							} else {
+								recordsArr = append(recordsArr, "'"+strings.ReplaceAll(records[i][recordIdx], "'", "''")+"'")
+							}
+						} else {
+							recordsArr = append(recordsArr, "NULL")
+						}
+					}
+					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
+					tableInsertArr = append(tableInsertArr, rowTmpStr)
+				}
+			}
+			if len(tableInsertArr) > 0 {
+				tableInsertValues = strings.Join(tableInsertArr, ",")
+				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tableName, strings.Join(headers, ","), tableInsertValues)
+				_, err := db.Exec(tableInsertStr)
+				if err != nil {
+					log.Infof("追加写入表失败：%s", err.Error())
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

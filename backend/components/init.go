@@ -86,6 +86,8 @@ func (c *Node) Init(nodeType string) {
 		c.main = sqlServerReaderMain
 	case "SQLServerSqlExecutor":
 		c.main = sqlServerExecutorMain
+	case "SQLServerWriter":
+		c.main = sqlServerWriterMain
 	default:
 	}
 }
@@ -156,7 +158,7 @@ func UpdateInput(currentNode Node, inputData RequestData, wg *sync.WaitGroup, st
 	defer wg.Done()
 	select {
 	case <-stopChan:
-		log.Info("Recive stop event")
+		log.Info("Receive stop event")
 	default:
 		err := currentNode.loadInput(currentNode, inputData)
 		if err != nil {
