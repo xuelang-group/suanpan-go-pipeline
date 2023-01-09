@@ -51,3 +51,47 @@
         name: out1
 
 
+
+- type: database
+  typeLabel: 数据库
+  category: execute
+  categoryLabel: 数据库执行
+  name: SQLServer数据库执行sql
+  key: SQLServerSqlExecutor
+  helpUrl:
+  parameters:
+    - key: host
+      name: 主机名或IP地址
+      type: inputString
+      required: True
+      default: ""
+    - key: port
+      name: 端口
+      type: inputString
+      required: True
+      default: ""
+    - key: user
+      name: 用户名
+      type: inputString
+      required: True
+      default: ""
+    - key: password
+      name: 密码
+      type: inputString
+      required: True
+      default: ""
+    - key: dbname
+      name: 数据库
+      type: inputString
+      default: postgres
+    - key: sql
+      name: sql执行语句
+      type: inputString
+      default: ""
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1

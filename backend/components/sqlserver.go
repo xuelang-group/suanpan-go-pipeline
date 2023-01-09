@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -23,7 +24,7 @@ type sqlServerDataCol struct {
 func sqlServerReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	sqlServerConn := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s",
 		currentNode.Config["user"].(string),
-		currentNode.Config["password"].(string),
+		url.QueryEscape(currentNode.Config["password"].(string)),
 		currentNode.Config["host"].(string),
 		currentNode.Config["port"].(string),
 		currentNode.Config["dbname"].(string))
@@ -137,4 +138,31 @@ func sqlServerReaderMain(currentNode Node, inputData RequestData) (map[string]in
 	storage.FPutObject(fmt.Sprintf("%s/data.csv", tmpKey), tmpPath)
 
 	return map[string]interface{}{"out1": tmpKey}, nil
+}
+
+func sqlServerExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	sqlServerConn := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s",
+		currentNode.Config["user"].(string),
+		url.QueryEscape(currentNode.Config["password"].(string)),
+		currentNode.Config["host"].(string),
+		currentNode.Config["port"].(string),
+		currentNode.Config["dbname"].(string))
+	db, err := sql.Open("sqlserver", sqlServerConn)
+
+	if err != nil {
+		log.Info("数据库连接失败，请检查配置")
+		return map[string]interface{}{}, nil
+	}
+	defer db.Close()
+	if err = db.Ping(); err != nil {
+		log.Info("数据库测试连接失败，请检查配置")
+		return map[string]interface{}{}, nil
+	}
+	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
+	_, err = db.Exec(tableQueryStr)
+	if err != nil {
+		log.Info("数据表执行sql语句失败")
+		return map[string]interface{}{}, nil
+	}
+	return map[string]interface{}{"out1": "success"}, nil
 }
