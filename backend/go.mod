@@ -3,6 +3,7 @@ module goPipeline
 go 1.19
 
 require (
+	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/go-gota/gota v0.12.0
 	github.com/googollee/go-socket.io v1.6.2
 	github.com/lib/pq v1.10.7
@@ -21,6 +22,8 @@ require (
 	github.com/go-playground/validator/v10 v10.11.1 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/gofrs/uuid v4.3.1+incompatible // indirect
+	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
+	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/gomodule/redigo v1.8.9 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
