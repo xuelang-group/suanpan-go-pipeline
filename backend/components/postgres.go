@@ -251,13 +251,13 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 	if strings.Compare(mode, "replace") == 0 {
 		//新建表
 		columns := records[0]
-		tableScheamArr := make([]string, 0)
+		tableSchemaArr := make([]string, 0)
 		for i := 1; i < len(columns); i++ {
-			tableScheamArr = append(tableScheamArr, "\""+string(columns[i])+"\""+" "+"varchar")
+			tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar")
 
 		}
-		tableScheamStr := strings.Join(tableScheamArr, ",")
-		tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableScheamStr)
+		tableSchemaStr := strings.Join(tableSchemaArr, ",")
+		tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableSchemaStr)
 		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
 		_, err := db.Exec(tableDropStr)
 		if err != nil {
@@ -340,13 +340,13 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			log.Infof("数据表检索失败, 开始自动创建数据表")
 			//新建表
 			columns := records[0]
-			tableScheamArr := make([]string, 0)
+			tableSchemaArr := make([]string, 0)
 			for i := 1; i < len(columns); i++ {
-				tableScheamArr = append(tableScheamArr, "\""+string(columns[i])+"\""+" "+"varchar")
+				tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar")
 
 			}
-			tableScheamStr := strings.Join(tableScheamArr, ",")
-			tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableScheamStr)
+			tableSchemaStr := strings.Join(tableSchemaArr, ",")
+			tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableSchemaStr)
 			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
 			_, err := db.Exec(tableDropStr)
 			if err != nil {
