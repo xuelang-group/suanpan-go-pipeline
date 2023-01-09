@@ -82,6 +82,8 @@ func (c *Node) Init(nodeType string) {
 		c.main = oracleExecutorMain
 	case "OracleWriter":
 		c.main = oracleWriterMain
+	case "SQLServerReader":
+		c.main = sqlServerReaderMain
 	default:
 	}
 }

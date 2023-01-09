@@ -235,7 +235,7 @@ func (g *Graph) componentsInit(appType string) {
 		log.Error(err.Error())
 	}
 	componentsToLoad := make(map[string][]string)
-	componentsToLoad["DataConnector"] = []string{"streamConnector.yml", "postgres.yml", "oracle.yml", "script.yml", "dataProcess.yml", "csv.yml"}
+	componentsToLoad["DataConnector"] = []string{"streamConnector.yml", "postgres.yml", "oracle.yml", "script.yml", "dataProcess.yml", "csv.yml", "sqlserver.yml"}
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".yml") && utils.SlicesContain(componentsToLoad[appType], f.Name()) {
 			if f.Name() == "streamConnector.yml" {

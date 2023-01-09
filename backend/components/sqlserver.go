@@ -21,13 +21,13 @@ type sqlServerDataCol struct {
 }
 
 func sqlServerReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	sqlServerConn := fmt.Sprintf("sqlserver://%s:%s@%s:%s/%s",
+	sqlServerConn := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s",
 		currentNode.Config["user"].(string),
 		currentNode.Config["password"].(string),
 		currentNode.Config["host"].(string),
 		currentNode.Config["port"].(string),
 		currentNode.Config["dbname"].(string))
-	db, err := sql.Open("sqlServer", sqlServerConn)
+	db, err := sql.Open("sqlserver", sqlServerConn)
 	if err != nil {
 		log.Info("数据库连接失败，请检查配置")
 		return map[string]interface{}{}, nil

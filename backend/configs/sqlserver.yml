@@ -2,8 +2,8 @@
   typeLabel: 数据库
   category: read
   categoryLabel: 数据库读取
-  name: sqlServer数据库读取
-  key: sqlServerReader
+  name: SQLServer数据库读取
+  key: SQLServerReader
   helpUrl:
   parameters:
     - key: host
