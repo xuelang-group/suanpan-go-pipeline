@@ -236,7 +236,7 @@ func ReadCsvSaveToSQLServer(r io.Reader, currentNode Node) error {
 	}
 
 	tableName := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
-	schema := currentNode.Config["databaseChoose"].(string)
+	schema := currentNode.Config["schema"].(string)
 	chunkSizeRaw := currentNode.Config["chunkSize"].(string)
 	mode := currentNode.Config["mode"].(string)
 	chunkSize, err := strconv.Atoi(chunkSizeRaw)

@@ -30,14 +30,14 @@
       name: 数据库
       type: inputString
       default: sqlServer
+    - key: schema
+      name: 模式名
+      type: inputString
+      default: public
     - key: table
       name: 表名
       type: inputString
       default: ""
-    - key: schema
-      name: schema
-      type: inputString
-      default: public
     - key: sql
       name: sql
       type: inputString
@@ -129,12 +129,12 @@
       name: 数据库
       type: inputString
       default: postgres
-    - key: databaseChoose
-      name: 写入数据库
+    - key: schema
+      name: 模式名
       type: inputString
       default: public
     - key: table
-      name: 写入表名
+      name: 表名
       type: inputString
       required: True
     - key: mode
