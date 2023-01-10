@@ -25,12 +25,22 @@ type oracleDataCol struct {
 }
 
 func oracleReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	oracleConn := fmt.Sprintf("oracle://%s:%s@%s:%s/%s",
-		currentNode.Config["user"].(string),
-		currentNode.Config["password"].(string),
-		currentNode.Config["host"].(string),
-		currentNode.Config["port"].(string),
-		currentNode.Config["dbname"].(string))
+	oracleConn := ""
+	if currentNode.Config["serviceNameOrSid"] == "serviceName" {
+		oracleConn = fmt.Sprintf("oracle://%s:%s@%s:%s/%s",
+			currentNode.Config["user"].(string),
+			currentNode.Config["password"].(string),
+			currentNode.Config["host"].(string),
+			currentNode.Config["port"].(string),
+			currentNode.Config["dbname"].(string))
+	} else {
+		oracleConn = fmt.Sprintf("oracle://%s:%s@%s:%s:%s",
+			currentNode.Config["user"].(string),
+			currentNode.Config["password"].(string),
+			currentNode.Config["host"].(string),
+			currentNode.Config["port"].(string),
+			currentNode.Config["dbname"].(string))
+	}
 	db, err := sql.Open("oracle", oracleConn)
 	if err != nil {
 		log.Info("数据库连接失败，请检查配置")
@@ -144,12 +154,22 @@ func oracleReaderMain(currentNode Node, inputData RequestData) (map[string]inter
 }
 
 func oracleExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	oracleConn := fmt.Sprintf("oracle://%s:%s@%s:%s/%s",
-		currentNode.Config["user"].(string),
-		currentNode.Config["password"].(string),
-		currentNode.Config["host"].(string),
-		currentNode.Config["port"].(string),
-		currentNode.Config["dbname"].(string))
+	oracleConn := ""
+	if currentNode.Config["serviceNameOrSid"] == "serviceName" {
+		oracleConn = fmt.Sprintf("oracle://%s:%s@%s:%s/%s",
+			currentNode.Config["user"].(string),
+			currentNode.Config["password"].(string),
+			currentNode.Config["host"].(string),
+			currentNode.Config["port"].(string),
+			currentNode.Config["dbname"].(string))
+	} else {
+		oracleConn = fmt.Sprintf("oracle://%s:%s@%s:%s:%s",
+			currentNode.Config["user"].(string),
+			currentNode.Config["password"].(string),
+			currentNode.Config["host"].(string),
+			currentNode.Config["port"].(string),
+			currentNode.Config["dbname"].(string))
+	}
 	db, err := sql.Open("oracle", oracleConn)
 
 	if err != nil {
@@ -217,12 +237,22 @@ func ReadCsvSaveToOracle(r io.Reader, currentNode Node) error {
 		return err
 	}
 	//链接数据库
-	oracleConn := fmt.Sprintf("oracle://%s:%s@%s:%s/%s",
-		currentNode.Config["user"].(string),
-		currentNode.Config["password"].(string),
-		currentNode.Config["host"].(string),
-		currentNode.Config["port"].(string),
-		currentNode.Config["dbname"].(string))
+	oracleConn := ""
+	if currentNode.Config["serviceNameOrSid"] == "serviceName" {
+		oracleConn = fmt.Sprintf("oracle://%s:%s@%s:%s/%s",
+			currentNode.Config["user"].(string),
+			currentNode.Config["password"].(string),
+			currentNode.Config["host"].(string),
+			currentNode.Config["port"].(string),
+			currentNode.Config["dbname"].(string))
+	} else {
+		oracleConn = fmt.Sprintf("oracle://%s:%s@%s:%s:%s",
+			currentNode.Config["user"].(string),
+			currentNode.Config["password"].(string),
+			currentNode.Config["host"].(string),
+			currentNode.Config["port"].(string),
+			currentNode.Config["dbname"].(string))
+	}
 	db, err := sql.Open("oracle", oracleConn)
 	if err != nil {
 		log.Info("数据库连接失败，请检查配置")
@@ -235,7 +265,7 @@ func ReadCsvSaveToOracle(r io.Reader, currentNode Node) error {
 	}
 
 	tableName := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
-	schema := currentNode.Config["databaseChoose"].(string)
+	schema := currentNode.Config["schema"].(string)
 	chunkSizeRaw := currentNode.Config["chunkSize"].(string)
 	mode := currentNode.Config["mode"].(string)
 	chunkSize, err := strconv.Atoi(chunkSizeRaw)

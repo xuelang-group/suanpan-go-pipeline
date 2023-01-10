@@ -6,8 +6,15 @@
   key: OracleReader
   helpUrl:
   parameters:
+    - key: connectMode
+      name: 连接类型
+      options:
+        - value: basic
+          label: Basic
+      type: select
+      default: basic
     - key: host
-      name: 主机名或IP地址
+      name: 服务器
       type: inputString
       required: True
       default: ""
@@ -16,6 +23,20 @@
       type: inputString
       required: True
       default: ""
+    - key: serviceNameOrSid
+      name: 服务名称/SID
+      type: select
+      options:
+        - value: serviceName
+          label: 服务名称
+        - value: sid
+          label: SID
+      default: "serviceName"
+    - key: dbname
+      name: 服务名称值/SID值
+      type: inputString
+      default: ""
+      required: True
     - key: user
       name: 用户名
       type: inputString
@@ -26,18 +47,14 @@
       type: inputString
       required: True
       default: ""
-    - key: dbname
-      name: 数据库
+    - key: schema
+      name: 模式名
       type: inputString
-      default: Oracle
+      default: public
     - key: table
       name: 表名
       type: inputString
       default: ""
-    - key: schema
-      name: schema
-      type: inputString
-      default: public
     - key: sql
       name: sql
       type: inputString
@@ -60,8 +77,15 @@
   key: OracleSqlExecutor
   helpUrl:
   parameters:
+    - key: connectMode
+      name: 连接类型
+      options:
+        - value: basic
+          label: Basic
+      type: select
+      default: basic
     - key: host
-      name: 主机名或IP地址
+      name: 服务器
       type: inputString
       required: True
       default: ""
@@ -69,6 +93,19 @@
       name: 端口
       type: inputString
       required: True
+      default: ""
+    - key: serviceNameOrSid
+      name: 服务名称/SID
+      type: select
+      options:
+        - value: serviceName
+          label: 服务名称
+        - value: sid
+          label: SID
+      default: "serviceName"
+    - key: dbname
+      name: 服务名称值/SID值
+      type: inputString
       default: ""
     - key: user
       name: 用户名
@@ -80,14 +117,11 @@
       type: inputString
       required: True
       default: ""
-    - key: dbname
-      name: 数据库
-      type: inputString
-      default: postgres
     - key: sql
       name: sql执行语句
       type: inputString
       default: ""
+      required: True
   ports:
     in:
       - id: in1
@@ -104,8 +138,15 @@
   key: OracleWriter
   helpUrl:
   parameters:
+    - key: connectMode
+      name: 连接类型
+      options:
+        - value: basic
+          label: Basic
+      type: select
+      default: basic
     - key: host
-      name: 主机名或IP地址
+      name: 服务器
       type: inputString
       required: True
       default: ""
@@ -114,6 +155,20 @@
       type: inputString
       required: True
       default: ""
+    - key: serviceNameOrSid
+      name: 服务名称/SID
+      type: select
+      options:
+        - value: serviceName
+          label: 服务名称
+        - value: sid
+          label: SID
+      default: "serviceName"
+    - key: dbname
+      name: 服务名称值/SID值
+      type: inputString
+      default: ""
+      required: True
     - key: user
       name: 用户名
       type: inputString
@@ -124,16 +179,13 @@
       type: inputString
       required: True
       default: ""
-    - key: dbname
-      name: 数据库
-      type: inputString
-      default: postgres
-    - key: databaseChoose
-      name: 写入数据库
+    - key: schema
+      name: 模式名
       type: inputString
       default: public
+      required: True
     - key: table
-      name: 写入表名
+      name: 表名
       type: inputString
       required: True
     - key: mode
