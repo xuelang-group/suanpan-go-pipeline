@@ -107,3 +107,71 @@
     out:
       - id: out1
         name: out1
+
+
+
+# - type: database
+#   typeLabel: 数据库
+#   category: write
+#   categoryLabel: 数据库写入
+#   name: Hive数据库写入
+#   key: HiveWriter
+#   helpUrl:
+#   parameters:
+#     - key: host
+#       name: 主机名或IP地址
+#       type: inputString
+#       required: True
+#       default: ""
+#     - key: port
+#       name: 端口
+#       type: inputString
+#       required: True
+#       default: ""
+#     - key: dbname
+#       name: 数据库
+#       type: inputString
+#       default: default
+#     - key: authMode
+#       name: 身份验证
+#       options:
+#         - value: basic
+#           label: 用户名和密码
+#       type: select
+#       default: basic
+#     - key: user
+#       name: 用户名
+#       type: inputString
+#       required: True
+#       default: ""
+#     - key: password
+#       name: 密码
+#       type: inputString
+#       required: True
+#       default: ""
+#     - key: table
+#       name: 写入表名
+#       type: inputString
+#       required: True
+#     - key: mode
+#       name: 写入方式
+#       options:
+#         - value: append
+#           label: 追加
+#         - value: replace
+#           label: 覆盖
+#         - value: clearAndAppend
+#           label: 清空并追加
+#       type: select
+#       default: clearAndAppend
+#     - key: chunkSize
+#       name: 每次写入最大行数
+#       type: inputString
+#       default: "10000"
+#   ports:
+#     in:
+#       - id: in1
+#         name: in1
+#     out:
+#       - id: out1
+#         name: out1
