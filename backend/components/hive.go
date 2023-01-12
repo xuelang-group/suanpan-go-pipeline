@@ -139,3 +139,29 @@ func hiveReaderMain(currentNode Node, inputData RequestData) (map[string]interfa
 
 	return map[string]interface{}{"out1": tmpKey}, nil
 }
+
+func hiveExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	hiveConn := fmt.Sprintf("%s:%s@%s:%s/%s?auth=PLAIN",
+		currentNode.Config["user"].(string),
+		url.QueryEscape(currentNode.Config["password"].(string)),
+		currentNode.Config["host"].(string),
+		currentNode.Config["port"].(string),
+		currentNode.Config["dbname"].(string))
+	db, err := sql.Open("hive", hiveConn)
+	if err != nil {
+		log.Infof("数据库连接失败，请检查配置")
+		return map[string]interface{}{}, nil
+	}
+	defer db.Close()
+	if err = db.Ping(); err != nil {
+		log.Infof("数据库测试连接失败，请检查配置")
+		return map[string]interface{}{}, nil
+	}
+	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
+	_, err = db.Exec(tableQueryStr)
+	if err != nil {
+		log.Infof("数据表执行sql语句失败")
+		return map[string]interface{}{}, nil
+	}
+	return map[string]interface{}{"out1": "success"}, nil
+}

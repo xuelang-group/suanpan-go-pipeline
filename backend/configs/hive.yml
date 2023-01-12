@@ -54,3 +54,56 @@
         name: out1
 
 
+
+
+
+- type: database
+  typeLabel: 数据库
+  category: execute
+  categoryLabel: 数据库执行
+  name: Hive数据库执行sql
+  key: HiveSqlExecutor
+  helpUrl:
+  parameters:
+    - key: host
+      name: 主机名或IP地址
+      type: inputString
+      required: True
+      default: ""
+    - key: port
+      name: 端口
+      type: inputString
+      required: True
+      default: ""
+    - key: dbname
+      name: 数据库
+      type: inputString
+      default: default
+    - key: authMode
+      name: 身份验证
+      options:
+        - value: basic
+          label: 用户名和密码
+      type: select
+      default: basic
+    - key: user
+      name: 用户名
+      type: inputString
+      required: True
+      default: ""
+    - key: password
+      name: 密码
+      type: inputString
+      required: True
+      default: ""
+    - key: sql
+      name: sql执行语句
+      type: inputString
+      default: ""
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1

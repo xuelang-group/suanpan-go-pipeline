@@ -90,6 +90,8 @@ func (c *Node) Init(nodeType string) {
 		c.main = sqlServerWriterMain
 	case "HiveReader":
 		c.main = hiveReaderMain
+	case "HiveSqlExecutor":
+		c.main = hiveExecutorMain
 	default:
 	}
 }
