@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/sqlflow.org/gohive"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
+	_ "sqlflow.org/gohive"
 )
 
 type hiveDataCol struct {
@@ -22,7 +22,7 @@ type hiveDataCol struct {
 }
 
 func hiveReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	hiveConn := fmt.Sprintf("hive://%s:%s@%s:%s?database=%s",
+	hiveConn := fmt.Sprintf("%s:%s@%s:%s/%s?auth=PLAIN",
 		currentNode.Config["user"].(string),
 		url.QueryEscape(currentNode.Config["password"].(string)),
 		currentNode.Config["host"].(string),
@@ -42,7 +42,7 @@ func hiveReaderMain(currentNode Node, inputData RequestData) (map[string]interfa
 	tableQueryStr := ""
 	if len(currentNode.Config["sql"].(string)) == 0 {
 		tableName := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
-		tableQueryStr = fmt.Sprintf("SELECT * FROM %s.%s", currentNode.Config["schema"].(string), tableName)
+		tableQueryStr = fmt.Sprintf("SELECT * FROM %s", tableName)
 	} else {
 		tableQueryStr = loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	}
