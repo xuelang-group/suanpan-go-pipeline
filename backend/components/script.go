@@ -19,7 +19,6 @@ type scriptData struct {
 }
 
 func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	log.Infof("ly---inputdata%s", currentNode.InputData)
 	inputStrings := getScriptInputData(currentNode)
 	inputsStringArr := make([]string, 0)
 	for _, inputString := range inputStrings {
@@ -27,15 +26,21 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	}
 	var inputdata = strings.Join(inputsStringArr, ",")
 	var script = currentNode.Config["script"].(string)
+	var nodeid = currentNode.Id
 	params := url.Values{}
 
-	Url, err := url.Parse("http://0.0.0.0:8080/data/?inputdata=fdsf&script=scr")
+	Url, err := url.Parse("http://0.0.0.0:8080/data/?nodeid=10112&inputdata=fdsf&script=scr")
 	if err != nil {
 		log.Infof("can not run script with error: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
+	params.Set("nodeid", nodeid)
 	params.Set("inputdata", inputdata)
 	params.Set("script", script)
+
+	// log.Infof("ly---nodeid--%s", nodeid)
+	// log.Infof("ly---input--%s", inputdata)
+	// log.Infof("ly---script--%s", script)
 	//如果参数中有中文参数,这个方法会进行URLEncode
 	Url.RawQuery = params.Encode()
 	urlPath := Url.String()
@@ -58,10 +63,7 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	//         return map[string]interface{}{}, nil
 	// }
 	outs := []scriptData{}
-	log.Infof("ly---stdout %s", stdout)
-
 	err1 := json.Unmarshal(stdout, &outs)
-	log.Infof("ly---outs %s", outs)
 	if err1 != nil {
 		log.Infof("can not solve output data with error: %s", err.Error())
 		return map[string]interface{}{}, nil
@@ -75,6 +77,7 @@ func getScriptInputData(currentNode Node) []string {
 		inputData := scriptData{}
 		switch i := v.(type) {
 		case dataframe.DataFrame:
+			os.Mkdir(currentNode.Id, os.ModePerm)
 			tmpPath := currentNode.Id + "/data.csv"
 			os.Remove(tmpPath)
 			file, err := os.Create(tmpPath)
@@ -125,6 +128,7 @@ func getScriptOutputData(outputs []scriptData, currentNode Node) map[string]inte
 			break
 		}
 		idx += 1
+
 	}
 	return outputDatas
 }

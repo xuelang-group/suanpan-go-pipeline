@@ -65,6 +65,10 @@ func (c *Node) Init(nodeType string) {
 		c.main = globalVariablDeleterMain
 	case "CsvDownloader":
 		c.main = csvDownloaderMain
+	case "CsvToDataFrame":
+		c.main = CsvToDataFrameMain
+	case "DataFrameToCsv":
+		c.main = DataFrameToCsvMain
 	case "ExecutePythonScript":
 		c.main = pyScriptMain
 	case "PostgresReader":
@@ -76,6 +80,24 @@ func (c *Node) Init(nodeType string) {
 	case "PostgresWriter":
 		c.main = postgresWriterMain
 		c.initNode = postgresInit
+	case "OracleReader":
+		c.main = oracleReaderMain
+	case "OracleSqlExecutor":
+		c.main = oracleExecutorMain
+	case "OracleWriter":
+		c.main = oracleWriterMain
+	case "SQLServerReader":
+		c.main = sqlServerReaderMain
+	case "SQLServerSqlExecutor":
+		c.main = sqlServerExecutorMain
+	case "SQLServerWriter":
+		c.main = sqlServerWriterMain
+	case "HiveReader":
+		c.main = hiveReaderMain
+	case "HiveSqlExecutor":
+		c.main = hiveExecutorMain
+	case "HiveWriter":
+		c.main = hiveWriterMain
 	default:
 	}
 }
@@ -146,7 +168,7 @@ func UpdateInput(currentNode Node, inputData RequestData, wg *sync.WaitGroup, st
 	defer wg.Done()
 	select {
 	case <-stopChan:
-		log.Info("Recive stop event")
+		log.Info("Receive stop event")
 	default:
 		err := currentNode.loadInput(currentNode, inputData)
 		if err != nil {

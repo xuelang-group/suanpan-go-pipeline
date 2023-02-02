@@ -1,8 +1,9 @@
 import json
 import argparse
-import pandas
+import pandas as pd
 import requests
 import traceback
+import os
 
 import uvicorn
 from fastapi import FastAPI
@@ -17,16 +18,37 @@ def runScript(inputs):
 def defaultLoad(x):
     return x
 
+def csvLoad(path):
+    return pd.read_csv(path)
+
 loadMethods = {
     "string": str,
     "int": int,
     "float": float,
     "json": defaultLoad,
-    "bool": defaultLoad
+    "bool": defaultLoad,
+    "csv": csvLoad
 }
 
 def defaultDump(x):
     return x
+
+def safeMkdirs(path):
+    if not os.path.exists(path):
+        try:
+            os.makedirs(path)
+        except FileExistsError:
+            pass
+    return path
+
+def safeMkdirsForFile(filepath):
+    return safeMkdirs(os.path.dirname(os.path.abspath(filepath)))
+
+def csvDump(df, nodeid, idx):
+    path = nodeid + "output/"+ "out"+str(idx) +"/data.csv"
+    safeMkdirsForFile(path)
+    df.to_csv(path, encoding="utf-8", index=True)
+    return path
 
 dumpMethods = {
     str: defaultDump,
@@ -34,7 +56,8 @@ dumpMethods = {
     float: defaultDump,
     dict: defaultDump,
     list: defaultDump,
-    bool: defaultDump
+    bool: defaultDump,
+    pd.DataFrame: csvDump
 }
 
 typeMappings = {
@@ -43,7 +66,8 @@ typeMappings = {
     float: "json",
     dict: "json",
     list: "json",
-    bool: "json"
+    bool: "json",
+    pd.DataFrame: "csv"
 }
 
 
@@ -82,22 +106,23 @@ def delGlobalVar(name):
 #             raise Exception(f"type of {output} is not supported.")
 #     return json.dumps(dumpedOutputs)
 
-def run(inputs=None, script=""):
+def run(nodeid =None, inputs=None, script=""):
     exec(functionSting % script.replace("\n", "\n    "), globals())
     loadedInputs = []
-
     for input in inputs:
-        # print(input)
         input = json.loads(eval("'{}'".format(input)))
         loadedInputs.append(loadMethods[input["type"]](input["data"]))
-    # input = json.loads(eval("'{}'".format(inputs)))
-    # loadedInputs.append(loadMethods[input["type"]](input["data"]))
     outputs = runScript(loadedInputs)
     dumpedOutputs = []
+    idx = 1
     for output in outputs:
         if type(output) in dumpMethods:
-            dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
-        elif not output:
+            if type(output) == pd.DataFrame:
+                dumpedOutputs.append({"data": dumpMethods[type(output)](output, nodeid, idx), "type": typeMappings[type(output)]})
+                idx += 1
+            else:
+                dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
+        elif output is not None:
             dumpedOutputs.append({"data": output, "type": "json"})
         else:
             raise Exception(f"type of {output} is not supported.")
@@ -105,13 +130,12 @@ def run(inputs=None, script=""):
 
 
 @app.get("/data/")
-async def getInputdata(inputdata, script):
+async def getInputdata(nodeid, inputdata, script):
     tmp = inputdata.split("},")
     if len(tmp) > 1:
         for i in range(len(tmp) - 1):
             tmp[i] = tmp[i] + "}"
-    result = run(tmp, script)
-    print(result)
+    result = run(nodeid,tmp, script)
     return result
 
 if __name__=="__main__":

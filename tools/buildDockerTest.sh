@@ -2,9 +2,9 @@
 
 REGISTRY="registry.xuelangyun.com"
 NAMESPACE="shuzhi-amd64"
-IMAGE_NAME="suanpan-go-pipeline-test"
+IMAGE_NAME="suanpan-go-pipeline"
 IMAGE_URL="${REGISTRY}/${NAMESPACE}/${IMAGE_NAME}"
-IMAGE_VERSION="v0.0.1"
+IMAGE_VERSION="preview"
 
 if [ -n "${PREVIEW}" ]; then
     docker build --pull \

@@ -18,7 +18,6 @@ func streamInMain(currentNode Node, inputData RequestData) (map[string]interface
 	if len(inputData.Data) == 0 {
 		return map[string]interface{}{}, nil
 	}
-	//studio/100026/tmp/55149/b18cba70697a11edbc2631b746db181e/2e9df810697811edb633ab10346ad070/out1
 	if len(inputData.Data) > 0 {
 		return loadInput(currentNode, inputData.Data), nil
 	} else {
@@ -73,9 +72,16 @@ func sendOutput(currentNode Node, inputData RequestData) {
 	id := inputData.ID
 	extra := inputData.Extra
 	r := stream.Request{ID: id, Extra: extra}
-	r.Send(map[string]string{
-		strings.Replace(currentNode.Key, "outputData", "out", -1): outputData,
-	})
+	if strings.Contains(outputData, ".csv") {
+		r.Send(map[string]string{
+			strings.Replace(currentNode.Key, "outputData", "out", -1): outputData[:len(outputData)-9],
+		})
+	} else {
+		r.Send(map[string]string{
+			strings.Replace(currentNode.Key, "outputData", "out", -1): outputData,
+		})
+	}
+
 }
 
 func saveAsString(outputData interface{}) string {
