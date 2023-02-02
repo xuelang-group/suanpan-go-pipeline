@@ -2,7 +2,7 @@
 
 REGISTRY="registry.xuelangyun.com"
 NAMESPACE="shuzhi-amd64"
-IMAGE_NAME="suanpan-go-pipelin"
+IMAGE_NAME="suanpan-go-pipeline"
 IMAGE_URL="${REGISTRY}/${NAMESPACE}/${IMAGE_NAME}"
 IMAGE_VERSION="preview"
 
