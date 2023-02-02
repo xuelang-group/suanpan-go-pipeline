@@ -20,7 +20,6 @@ func csvDownloaderMain(currentNode Node, inputData RequestData) (map[string]inte
 	args := config.GetArgs()
 	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
 	tmpKey := currentNode.InputData["in1"].(string)
-	log.Infof("ly---tmpKey1 %s", tmpKey)
 	if needBasename {
 		tmpKey = path.Join(currentNode.InputData["in1"].(string), "data.csv")
 	}
@@ -30,7 +29,6 @@ func csvDownloaderMain(currentNode Node, inputData RequestData) (map[string]inte
 		log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
 		return map[string]interface{}{}, nil
 	}
-	log.Infof("ly---tmpKey2 %s", tmpKey)
 	return map[string]interface{}{"out1": tmpPath}, nil
 }
 
@@ -61,7 +59,6 @@ func CsvToDataFrameMain(currentNode Node, inputData RequestData) (map[string]int
 		}
 	}()
 	df := dataframe.ReadCSV(csvFile)
-	log.Infof("ly---df--%s", df)
 	return map[string]interface{}{"out1": df}, nil
 }
 func DataFrameToCsvMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
@@ -80,7 +77,6 @@ func DataFrameToCsvMain(currentNode Node, inputData RequestData) (map[string]int
 	dataCols := df.Names()[0 : len(df.Names())-1]
 	colNames = append(colNames, dataCols...)
 	df = df.Select(colNames)
-	log.Infof("ly--df--123--%s", df)
 	tmpPath := "data.csv"
 	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/out1", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId)
 	os.Remove(tmpPath)

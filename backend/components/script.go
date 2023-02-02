@@ -19,7 +19,6 @@ type scriptData struct {
 }
 
 func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	// log.Infof("ly---inputdata%s", currentNode.InputData)
 	inputStrings := getScriptInputData(currentNode)
 	inputsStringArr := make([]string, 0)
 	for _, inputString := range inputStrings {
@@ -39,9 +38,9 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	params.Set("inputdata", inputdata)
 	params.Set("script", script)
 
-	log.Infof("ly---nodeid--%s", nodeid)
-	log.Infof("ly---input--%s", inputdata)
-	log.Infof("ly---script--%s", script)
+	// log.Infof("ly---nodeid--%s", nodeid)
+	// log.Infof("ly---input--%s", inputdata)
+	// log.Infof("ly---script--%s", script)
 	//如果参数中有中文参数,这个方法会进行URLEncode
 	Url.RawQuery = params.Encode()
 	urlPath := Url.String()
@@ -64,10 +63,7 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	//         return map[string]interface{}{}, nil
 	// }
 	outs := []scriptData{}
-	log.Infof("ly---stdout %s", stdout)
-
 	err1 := json.Unmarshal(stdout, &outs)
-	log.Infof("ly---outs %s", outs)
 	if err1 != nil {
 		log.Infof("can not solve output data with error: %s", err.Error())
 		return map[string]interface{}{}, nil
@@ -134,6 +130,5 @@ func getScriptOutputData(outputs []scriptData, currentNode Node) map[string]inte
 		idx += 1
 
 	}
-	log.Infof("ly---outsdatas  %s", outputDatas)
 	return outputDatas
 }

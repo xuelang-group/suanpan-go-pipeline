@@ -18,7 +18,6 @@ func streamInMain(currentNode Node, inputData RequestData) (map[string]interface
 	if len(inputData.Data) == 0 {
 		return map[string]interface{}{}, nil
 	}
-	//studio/100026/tmp/55149/b18cba70697a11edbc2631b746db181e/2e9df810697811edb633ab10346ad070/out1
 	if len(inputData.Data) > 0 {
 		return loadInput(currentNode, inputData.Data), nil
 	} else {
@@ -69,10 +68,7 @@ func streamOutMain(currentNode Node, inputData RequestData) (map[string]interfac
 }
 
 func sendOutput(currentNode Node, inputData RequestData) {
-	// log.Infof("ly--current type %s", currentNode.Config)
 	outputData := saveOutputData(currentNode)
-	// log.Infof("ly---out---%s", outputData)
-	// log.Infof("ly---out1---%s", outputData[:len(outputData)-9])
 	id := inputData.ID
 	extra := inputData.Extra
 	r := stream.Request{ID: id, Extra: extra}

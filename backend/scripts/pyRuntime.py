@@ -47,9 +47,7 @@ def safeMkdirsForFile(filepath):
 def csvDump(df, nodeid, idx):
     path = nodeid + "output/"+ "out"+str(idx) +"/data.csv"
     safeMkdirsForFile(path)
-    print(df)
     df.to_csv(path, encoding="utf-8", index=True)
-    # print(pd.read_csv(path))
     return path
 
 dumpMethods = {
@@ -111,22 +109,13 @@ def delGlobalVar(name):
 def run(nodeid =None, inputs=None, script=""):
     exec(functionSting % script.replace("\n", "\n    "), globals())
     loadedInputs = []
-
     for input in inputs:
-        # print(input)
         input = json.loads(eval("'{}'".format(input)))
         loadedInputs.append(loadMethods[input["type"]](input["data"]))
-    # input = json.loads(eval("'{}'".format(inputs)))
-    # loadedInputs.append(loadMethods[input["type"]](input["data"]))
-    # print(loadedInputs)
     outputs = runScript(loadedInputs)
-    # print(outputs)
-    # print(type(outputs))
     dumpedOutputs = []
     idx = 1
     for output in outputs:
-        print(type(output))
-        print(output)
         if type(output) in dumpMethods:
             if type(output) == pd.DataFrame:
                 dumpedOutputs.append({"data": dumpMethods[type(output)](output, nodeid, idx), "type": typeMappings[type(output)]})
@@ -142,16 +131,11 @@ def run(nodeid =None, inputs=None, script=""):
 
 @app.get("/data/")
 async def getInputdata(nodeid, inputdata, script):
-    print(nodeid)
-    print(inputdata)
-    print(script)
-
     tmp = inputdata.split("},")
     if len(tmp) > 1:
         for i in range(len(tmp) - 1):
             tmp[i] = tmp[i] + "}"
     result = run(nodeid,tmp, script)
-    print(result)
     return result
 
 if __name__=="__main__":
