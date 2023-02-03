@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/go-gota/gota/dataframe"
-	"github.com/go-gota/gota/series"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
@@ -59,23 +58,31 @@ func CsvToDataFrameMain(currentNode Node, inputData RequestData) (map[string]int
 		}
 	}()
 	df := dataframe.ReadCSV(csvFile)
+
+	// log.Infof("ly---read table %s", df)
 	return map[string]interface{}{"out1": df}, nil
 }
 func DataFrameToCsvMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	//dataframe转成string传递给流输出组件
 	df := currentNode.InputData["in1"].(dataframe.DataFrame)
-	index := 0
-	idxSeries := df.Rapply(func(s series.Series) series.Series {
-		index++
-		return series.Ints(index)
+	// index := 0
+	// idxSeries := df.Rapply(func(s series.Series) series.Series {
+	// 	index++
+	// 	return series.Ints(index)
 
-	})
-	df = df.Mutate(idxSeries.Col("X0")).
-		Rename("index", "X0")
+	// })
+	// df = df.Mutate(idxSeries.Col("X0")).
+	// 	Rename("index", "X0")
+	// df = df.Drop(0)
+
 	colNames := make([]string, 0, len(df.Names()))
-	colNames = append(colNames, df.Names()[len(df.Names())-1])
-	dataCols := df.Names()[0 : len(df.Names())-1]
+	// colNames = append(colNames, df.Names()[len(df.Names())-1])
+	log.Infof("ly---before1 table %s", colNames)
+	// dataCols := df.Names()[0 : len(df.Names())-1]
+	dataCols := df.Names()[0:len(df.Names())]
+
 	colNames = append(colNames, dataCols...)
+	log.Infof("ly---before2 table %s", colNames)
 	df = df.Select(colNames)
 	tmpPath := "data.csv"
 	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/out1", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId)
@@ -86,6 +93,8 @@ func DataFrameToCsvMain(currentNode Node, inputData RequestData) (map[string]int
 		errors.New("无法创建临时文件")
 	}
 	df.WriteCSV(file)
+
+	log.Infof("ly---write table %s", df)
 	storage.FPutObject(fmt.Sprintf("%s/data.csv", tmpKey), tmpPath)
 
 	return map[string]interface{}{"out1": tmpKey}, nil

@@ -47,7 +47,7 @@ def safeMkdirsForFile(filepath):
 def csvDump(df, nodeid, idx):
     path = nodeid + "output/"+ "out"+str(idx) +"/data.csv"
     safeMkdirsForFile(path)
-    df.to_csv(path, encoding="utf-8", index=True)
+    df.to_csv(path, encoding="utf-8", index=False)
     return path
 
 dumpMethods = {
