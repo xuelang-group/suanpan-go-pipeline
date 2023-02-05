@@ -72,10 +72,12 @@ func DataFrameToCsvMain(currentNode Node, inputData RequestData) (map[string]int
 	})
 	df = df.Mutate(idxSeries.Col("X0")).
 		Rename("index", "X0")
+	log.Infof("ly--writedf--%s", df)
 	colNames := make([]string, 0, len(df.Names()))
 	colNames = append(colNames, df.Names()[len(df.Names())-1])
 	dataCols := df.Names()[0 : len(df.Names())-1]
 	colNames = append(colNames, dataCols...)
+	log.Infof("ly---before2 table %s", colNames)
 	df = df.Select(colNames)
 	tmpPath := "data.csv"
 	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/out1", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId)
