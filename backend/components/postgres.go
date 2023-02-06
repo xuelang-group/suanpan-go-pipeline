@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-gota/gota/dataframe"
 	_ "github.com/lib/pq"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -201,7 +200,6 @@ func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]int
 		}
 	}
 	csvFile, err := os.Open(tmpPath)
-	df := dataframe.ReadCSV(csvFile)
 	if err != nil {
 		log.Errorf("Can not open csv file: %s, with error: %s", tmpPath, err.Error())
 		return map[string]interface{}{}, nil
