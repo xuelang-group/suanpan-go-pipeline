@@ -22,6 +22,26 @@
   typeLabel: 常用工具
   category: csv
   categoryLabel: csv处理
+  name: Csv上传
+  key: CsvUploader
+  helpUrl:
+  parameters:
+    - key: needBasename
+      name: 流计算输出
+      type: checkbox
+      required: True
+      default: True
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1
+- type: tools
+  typeLabel: 常用工具
+  category: csv
+  categoryLabel: csv处理
   name: Csv转Dataframe
   key: CsvToDataFrame
   helpUrl:

@@ -2,10 +2,16 @@ package components
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
+	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/stream"
 )
 
@@ -40,7 +46,7 @@ func loadInput(currentNode Node, inputData string) map[string]interface{} {
 		json.Unmarshal([]byte(inputData), &v)
 		return map[string]interface{}{"out1": v}
 	case "csv":
-		return map[string]interface{}{"out1": inputData}
+		return map[string]interface{}{"out1": csvFileDownload(currentNode)}
 	case "image":
 		log.Infof("not support image")
 		fallthrough
@@ -68,19 +74,13 @@ func streamOutMain(currentNode Node, inputData RequestData) (map[string]interfac
 }
 
 func sendOutput(currentNode Node, inputData RequestData) {
-	outputData := saveOutputData(currentNode)
+	outputData := saveOutputData(currentNode, inputData)
 	id := inputData.ID
 	extra := inputData.Extra
 	r := stream.Request{ID: id, Extra: extra}
-	if strings.Contains(outputData, ".csv") {
-		r.Send(map[string]string{
-			strings.Replace(currentNode.Key, "outputData", "out", -1): outputData[:len(outputData)-9],
-		})
-	} else {
-		r.Send(map[string]string{
-			strings.Replace(currentNode.Key, "outputData", "out", -1): outputData,
-		})
-	}
+	r.Send(map[string]string{
+		strings.Replace(currentNode.Key, "outputData", "out", -1): outputData,
+	})
 
 }
 
@@ -97,7 +97,7 @@ func saveAsString(outputData interface{}) string {
 	return outputString
 }
 
-func saveOutputData(currentNode Node) string {
+func saveOutputData(currentNode Node, inputData RequestData) string {
 	switch currentNode.Config["subtype"] {
 	case "string":
 		return saveAsString(currentNode.InputData["in1"])
@@ -107,7 +107,7 @@ func saveOutputData(currentNode Node) string {
 		output, _ := json.Marshal(currentNode.InputData["in1"])
 		return string(output)
 	case "csv":
-		return currentNode.InputData["in1"].(string)
+		return csvFileUpload(currentNode, inputData)
 	case "image":
 		log.Infof("not support image")
 		fallthrough
@@ -120,4 +120,20 @@ func saveOutputData(currentNode Node) string {
 	default:
 		return saveAsString(currentNode.InputData["in1"])
 	}
+}
+
+func csvFileUpload(currentNode Node, inputData RequestData) string {
+	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/%s", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId, currentNode.Key)
+	storage.FPutObject(fmt.Sprintf("%s/data.csv", tmpKey), currentNode.InputData["in1"].(string))
+	os.Remove(currentNode.InputData["in1"].(string))
+	return tmpKey
+}
+
+func csvFileDownload(currentNode Node) string {
+	args := config.GetArgs()
+	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
+	tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
+	os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
+	storage.FGetObject(tmpKey, tmpPath)
+	return tmpPath
 }

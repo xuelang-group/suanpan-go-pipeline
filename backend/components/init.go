@@ -98,6 +98,8 @@ func (c *Node) Init(nodeType string) {
 		c.main = hiveExecutorMain
 	case "HiveWriter":
 		c.main = hiveWriterMain
+	case "CsvUploader":
+		c.main = csvUploaderMain
 	default:
 	}
 }

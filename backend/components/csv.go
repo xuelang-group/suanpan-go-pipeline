@@ -31,19 +31,28 @@ func csvDownloaderMain(currentNode Node, inputData RequestData) (map[string]inte
 	return map[string]interface{}{"out1": tmpPath}, nil
 }
 
+func csvUploaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	needBasename := currentNode.Config["needBasename"].(bool)
+	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/%s/data.csv", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId, currentNode.Id)
+	tmpPath := currentNode.InputData["in1"].(string)
+	storageErr := storage.FPutObject(tmpKey, tmpPath)
+	if storageErr != nil {
+		log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
+		return map[string]interface{}{}, nil
+	}
+	if needBasename {
+		return map[string]interface{}{"out1": tmpPath[:len(tmpPath)-9]}, nil
+	} else {
+		return map[string]interface{}{"out1": tmpPath}, nil
+	}
+}
+
 func CsvToDataFrameMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	//直接传递给下游组件dataframe
-	args := config.GetArgs()
 	tmpPath := currentNode.InputData["in1"].(string)
 	if _, err := os.Stat(tmpPath); errors.Is(err, os.ErrNotExist) {
-		tmpPath = path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
-		tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
-		os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
-		storageErr := storage.FGetObject(tmpKey, tmpPath)
-		if storageErr != nil {
-			log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
-			return map[string]interface{}{}, nil
-		}
+		log.Errorf("Can not find file: %s", tmpPath)
+		return map[string]interface{}{}, nil
 	}
 	csvFile, err := os.Open(tmpPath)
 	if err != nil {
@@ -61,36 +70,22 @@ func CsvToDataFrameMain(currentNode Node, inputData RequestData) (map[string]int
 	return map[string]interface{}{"out1": df}, nil
 }
 func DataFrameToCsvMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	//dataframe转成string传递给流输出组件
 	df := currentNode.InputData["in1"].(dataframe.DataFrame)
-	// index := 0
-	// idxSeries := df.Rapply(func(s series.Series) series.Series {
-	// 	index++
-	// 	return series.Ints(index)
-
-	// })
-	// df = df.Mutate(idxSeries.Col("X0")).
-	// 	Rename("index", "X0")
-	// df = df.Drop(0)
-
 	colNames := make([]string, 0, len(df.Names()))
-	// colNames = append(colNames, df.Names()[len(df.Names())-1])
-	// dataCols := df.Names()[0 : len(df.Names())-1]
 	dataCols := df.Names()[0:len(df.Names())]
 
 	colNames = append(colNames, dataCols...)
 	df = df.Select(colNames)
-	tmpPath := "data.csv"
-	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/out1", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId)
+	tmpPath := fmt.Sprintf("%s/data.csv", currentNode.Id)
+	os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
 	os.Remove(tmpPath)
 	file, err := os.Create(tmpPath)
 	if err != nil {
 		log.Error("无法创建临时文件")
 		errors.New("无法创建临时文件")
 	}
+	defer file.Close()
 	df.WriteCSV(file)
 
-	storage.FPutObject(fmt.Sprintf("%s/data.csv", tmpKey), tmpPath)
-
-	return map[string]interface{}{"out1": tmpKey}, nil
+	return map[string]interface{}{"out1": tmpPath}, nil
 }
