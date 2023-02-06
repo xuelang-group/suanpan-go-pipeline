@@ -13,6 +13,7 @@ COPY backend/scripts /components/scripts
 RUN chmod +x /components/goPipeline && \
     pip install pandas requests "fastapi[all]" -i https://pypi.mirrors.ustc.edu.cn/simple && \
     sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list && \
+    sed -i 's|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g' /etc/apt/sources.list && \
     apt update && \
     apt install curl bash -y && \
     rm -rf /var/lib/apt/lists/* && \
