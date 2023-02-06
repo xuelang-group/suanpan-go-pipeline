@@ -46,7 +46,7 @@ func loadInput(currentNode Node, inputData string) map[string]interface{} {
 		json.Unmarshal([]byte(inputData), &v)
 		return map[string]interface{}{"out1": v}
 	case "csv":
-		return map[string]interface{}{"out1": csvFileDownload(currentNode)}
+		return map[string]interface{}{"out1": csvFileDownload(inputData, currentNode.Id)}
 	case "image":
 		log.Infof("not support image")
 		fallthrough
@@ -123,16 +123,16 @@ func saveOutputData(currentNode Node, inputData RequestData) string {
 }
 
 func csvFileUpload(currentNode Node, inputData RequestData) string {
-	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/%s", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId, currentNode.Key)
+	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/%s", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId, strings.Replace(currentNode.Key, "outputData", "out", -1))
 	storage.FPutObject(fmt.Sprintf("%s/data.csv", tmpKey), currentNode.InputData["in1"].(string))
 	os.Remove(currentNode.InputData["in1"].(string))
 	return tmpKey
 }
 
-func csvFileDownload(currentNode Node) string {
+func csvFileDownload(data string, id string) string {
 	args := config.GetArgs()
-	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
-	tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
+	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], data, id, "data.csv")
+	tmpKey := path.Join(data, "data.csv")
 	os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
 	storage.FGetObject(tmpKey, tmpPath)
 	return tmpPath

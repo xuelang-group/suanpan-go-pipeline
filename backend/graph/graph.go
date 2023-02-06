@@ -81,7 +81,7 @@ func (g *Graph) nodesInit() {
 		for _, param := range nodeConfig.Parameters {
 			params[param.Key] = param.Value
 		}
-		if strings.HasPrefix(node.Key, "in") || strings.HasSuffix(node.Key, "out") {
+		if strings.HasPrefix(node.Key, "in") || strings.HasPrefix(node.Key, "out") {
 			var subtype string
 			if strings.HasPrefix(node.Key, "in") {
 				subtype = g.NodeInfo.Inputs[node.Key].Subtype
