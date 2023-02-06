@@ -126,7 +126,6 @@ func sqlServerReaderMain(currentNode Node, inputData RequestData) (map[string]in
 	}
 	os.Mkdir(currentNode.Id, os.ModePerm)
 	tmpPath := fmt.Sprintf("%s/data.csv", currentNode.Id)
-	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/%s", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId, currentNode.Id)
 	os.Remove(tmpPath)
 	file, err := os.Create(tmpPath)
 	if err != nil {
@@ -139,9 +138,8 @@ func sqlServerReaderMain(currentNode Node, inputData RequestData) (map[string]in
 		log.Error("无法写入csv数据")
 		return map[string]interface{}{}, nil
 	}
-	storage.FPutObject(fmt.Sprintf("%s/data.csv", tmpKey), tmpPath)
 
-	return map[string]interface{}{"out1": tmpKey}, nil
+	return map[string]interface{}{"out1": tmpPath}, nil
 }
 
 func sqlServerExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {

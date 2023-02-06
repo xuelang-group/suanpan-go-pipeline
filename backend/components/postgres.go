@@ -146,22 +146,21 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	}
 	os.Mkdir(currentNode.Id, os.ModePerm)
 	tmpPath := fmt.Sprintf("%s/data.csv", currentNode.Id)
-	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/%s", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId, currentNode.Id)
 	os.Remove(tmpPath)
 	file, err := os.Create(tmpPath)
 	if err != nil {
 		log.Error("无法创建临时文件")
 		return map[string]interface{}{}, nil
 	}
+	defer file.Close()
 	w := csv.NewWriter(file)
 	err = w.WriteAll(records)
 	if err != nil {
 		log.Error("无法写入csv数据")
 		return map[string]interface{}{}, nil
 	}
-	storage.FPutObject(fmt.Sprintf("%s/data.csv", tmpKey), tmpPath)
 
-	return map[string]interface{}{"out1": tmpKey}, nil
+	return map[string]interface{}{"out1": tmpPath}, nil
 }
 
 func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
