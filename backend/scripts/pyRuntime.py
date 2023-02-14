@@ -112,20 +112,21 @@ def run(nodeid =None, inputs=None, script=""):
     for input in inputs:
         input = json.loads(eval("'{}'".format(input)))
         loadedInputs.append(loadMethods[input["type"]](input["data"]))
-    outputs = runScript(loadedInputs)
     dumpedOutputs = []
-    idx = 1
-    for output in outputs:
-        if type(output) in dumpMethods:
-            if type(output) == pd.DataFrame:
-                dumpedOutputs.append({"data": dumpMethods[type(output)](output, nodeid, idx), "type": typeMappings[type(output)]})
-                idx += 1
-            else:
-                dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
-        elif output is not None:
-            dumpedOutputs.append({"data": output, "type": "json"})
-        else:
-            raise Exception(f"type of {output} is not supported.")
+    try:
+        outputs = runScript(loadedInputs)
+        idx = 1
+        for output in outputs:
+            if type(output) in dumpMethods:
+                if type(output) == pd.DataFrame:
+                    dumpedOutputs.append({"data": dumpMethods[type(output)](output, nodeid, idx), "type": "json"})
+                    idx += 1
+                else:
+                    dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
+            elif output is not None:
+                dumpedOutputs.append({"data": output, "type": "json"})
+    except:
+        print("type of outputs is not supported.")
     return dumpedOutputs
 
 

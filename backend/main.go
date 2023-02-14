@@ -17,7 +17,7 @@ import (
 
 func main() {
 	cmdPython := exec.Command("python3", "scripts/pyRuntime.py")
-	errPython := cmdPython.Start()
+
 	pyStdout, _ := cmdPython.StdoutPipe()
 
 	go func() {
@@ -34,10 +34,10 @@ func main() {
 		scanner := bufio.NewScanner(pyStderr)
 		for scanner.Scan() {
 			m := scanner.Text()
-			log.Infof("Python脚本编辑器报错：%s", m)
+			log.Errorf("Python脚本编辑器报错：%s", m)
 		}
 	}()
-
+	errPython := cmdPython.Start()
 	if errPython != nil {
 		log.Errorf("启动fastapi失败，失败原因：%s", errPython.Error())
 	}
