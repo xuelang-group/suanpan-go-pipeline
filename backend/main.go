@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"goPipeline/stream"
 	"goPipeline/utils"
 	"goPipeline/web"
@@ -17,8 +18,28 @@ import (
 func main() {
 	cmdPython := exec.Command("python3", "scripts/pyRuntime.py")
 	errPython := cmdPython.Start()
+	pyStdout, _ := cmdPython.StdoutPipe()
+
+	go func() {
+		scanner := bufio.NewScanner(pyStdout)
+		for scanner.Scan() {
+			m := scanner.Text()
+			log.Infof("Python脚本编辑器消息：%s", m)
+		}
+	}()
+
+	pyStderr, _ := cmdPython.StderrPipe()
+
+	go func() {
+		scanner := bufio.NewScanner(pyStderr)
+		for scanner.Scan() {
+			m := scanner.Text()
+			log.Infof("Python脚本编辑器报错：%s", m)
+		}
+	}()
+
 	if errPython != nil {
-		log.Errorf("启动fastapi失败，失败原因：%s",errPython.Error())
+		log.Errorf("启动fastapi失败，失败原因：%s", errPython.Error())
 	}
 	if val, ok := config.GetArgs()["--__python__pkgs"]; ok {
 		if len(val) > 0 {
@@ -53,6 +74,6 @@ func main() {
 		panic("未提供启动组件名称")
 	}
 	comp.InitHandler()
-	comp.SioHandler() 
+	comp.SioHandler()
 	app.Run(comp.CallHandler)
 }
