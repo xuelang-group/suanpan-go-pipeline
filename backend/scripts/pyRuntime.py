@@ -4,6 +4,7 @@ import pandas as pd
 import requests
 import traceback
 import os
+import sys
 
 import uvicorn
 from fastapi import FastAPI
@@ -126,7 +127,8 @@ def run(nodeid =None, inputs=None, script=""):
             elif output is not None:
                 dumpedOutputs.append({"data": output, "type": "json"})
     except:
-        print("type of outputs is not supported.")
+        # print("type of outputs is not supported.")
+        print(traceback.format_exc(), file=sys.stderr)
     return dumpedOutputs
 
 
@@ -139,5 +141,38 @@ async def getInputdata(nodeid, inputdata, script):
     result = run(nodeid,tmp, script)
     return result
 
+LOGGING_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "()": "uvicorn.logging.DefaultFormatter",
+            "fmt": "%(levelprefix)s %(message)s",
+            "use_colors": None,
+        },
+        "access": {
+            "()": "uvicorn.logging.AccessFormatter",
+            "fmt": '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',  # noqa: E501
+        },
+    },
+    "handlers": {
+        "default": {
+            "formatter": "default",
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+        },
+        "access": {
+            "formatter": "access",
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+        },
+    },
+    "loggers": {
+        "uvicorn": {"handlers": ["default"], "level": "INFO", "propagate": False},
+        "uvicorn.error": {"level": "INFO"},
+        "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
+    },
+}
+
 if __name__=="__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8080, log_config=LOGGING_CONFIG)
