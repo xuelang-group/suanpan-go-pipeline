@@ -213,8 +213,8 @@ func (g *Graph) UpdateInputs(inputData map[string]string, id string, extra strin
 	g.stopChan = make(chan bool)
 	for _, node := range g.Nodes {
 		if len(node.PreviousNodes) == 0 {
-			g.wg.Add(1)
 			if strings.HasPrefix(node.Key, "in") {
+				g.wg.Add(1)
 				go node.UpdateInput(node, components.RequestData{Data: inputData[node.Key], ID: id, Extra: extra}, &g.wg, g.stopChan)
 			}
 		}
