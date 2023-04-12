@@ -34,7 +34,7 @@ type Graph struct {
 	key        string
 }
 
-func (g *Graph) Init(appType string) {
+func (g *Graph) Init(appType string, appMode string) {
 	// 获取环境变量
 	e := config.GetEnv()
 	// 获取命令行参数
@@ -45,6 +45,9 @@ func (g *Graph) Init(appType string) {
 	g.graphInit()
 	g.nodesInit()
 	variables.GlobalVariables = make(map[string]interface{})
+	if appMode != "edit" {
+		g.Status = 1
+	}
 }
 
 func (g *Graph) graphInit() {

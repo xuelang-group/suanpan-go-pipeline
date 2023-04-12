@@ -61,12 +61,17 @@ func main() {
 		utils.RegisterPort(web.WebServerPort, realPort)
 		web.WebServerPort = realPort
 	}
+
+	appMode := "edit"
+	if val, ok := config.GetArgs()["--__app_mode"]; ok {
+		appMode = val
+	}
 	var comp stream.Component
 	args := os.Args
 	if len(args) >= 2 {
 		// 数据连接器 DataConnector
 		if utils.SlicesContain([]string{"DataConnector"}, args[1]) {
-			comp = &stream.DataConnectorComponent{Type: args[1]}
+			comp = &stream.DataConnectorComponent{Type: args[1], Mode: appMode}
 		} else {
 			panic("启动组件名错误")
 		}

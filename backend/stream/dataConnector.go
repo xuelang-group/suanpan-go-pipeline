@@ -11,6 +11,7 @@ import (
 type DataConnectorComponent struct {
 	DefaultComponents
 	Type string
+	Mode string
 }
 
 func (c *DataConnectorComponent) CallHandler(r stream.Request) {
@@ -26,9 +27,11 @@ func (c *DataConnectorComponent) CallHandler(r stream.Request) {
 }
 
 func (c *DataConnectorComponent) InitHandler() {
-
+	graph.GraphInst.Init(c.Type, c.Mode)
 }
 
 func (c *DataConnectorComponent) SioHandler() {
-	go web.RunWeb(c.Type)
+	if c.Mode == "edit" {
+		go web.RunWeb(c.Type)
+	}
 }

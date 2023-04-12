@@ -81,8 +81,6 @@ func variable(w http.ResponseWriter, req *http.Request) {
 
 func RunWeb(appType string) {
 
-	graph.GraphInst.Init(appType)
-
 	server.OnConnect("/", func(s socketio.Conn) error {
 		log.Infof("connected: %s", s.ID())
 		return nil
