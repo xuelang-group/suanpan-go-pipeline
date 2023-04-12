@@ -81,3 +81,28 @@
     out:
       - id: out1
         name: out1
+- type: process
+  typeLabel: 逻辑处理
+  name: 延迟
+  key: Delay
+  supportConfigInPorts: True
+  supportConfigOutPorts: True
+  helpUrl:
+  parameters:
+    - key: duration
+      name: 时长(秒)
+      type: inputString
+      required: True
+      default: "1"
+    - key: inPorts
+      name: 输入端口
+      type: ports
+      default:
+        - id: "in1"
+          name: "in1"
+    - key: outPorts
+      name: 输出端口
+      type: ports
+      default:
+        - id: "out1"
+          name: "out1"

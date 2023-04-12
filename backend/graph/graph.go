@@ -94,7 +94,7 @@ func (g *Graph) nodesInit() {
 		node.Config = params
 		node.InputData = make(map[string]interface{})
 		node.OutputData = make(map[string]interface{})
-		supportPortConfig := []string{"ExecutePythonScript", "DataSync"}
+		supportPortConfig := []string{"ExecutePythonScript", "DataSync", "Delay"}
 		nodeSupportPortConfig := false
 		for _, key := range supportPortConfig {
 			if key == node.Key {
@@ -235,7 +235,7 @@ func (g *Graph) componentsInit(appType string) {
 		log.Error(err.Error())
 	}
 	componentsToLoad := make(map[string][]string)
-	componentsToLoad["DataConnector"] = []string{"streamConnector.yml", "postgres.yml", "oracle.yml", "script.yml", "dataProcess.yml", "csv.yml", "sqlserver.yml", "hive.yml"}
+	componentsToLoad["DataConnector"] = []string{"streamConnector.yml", "postgres.yml", "oracle.yml", "script.yml", "dataProcess.yml", "csv.yml", "sqlserver.yml", "hive.yml", "network.yml"}
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".yml") && utils.SlicesContain(componentsToLoad[appType], f.Name()) {
 			if f.Name() == "streamConnector.yml" {

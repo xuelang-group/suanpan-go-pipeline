@@ -1,0 +1,38 @@
+- type: network
+  typeLabel: 网络通讯
+  name: SocketIO通讯
+  key: SocketIOClient
+  helpUrl:
+  parameters:
+    - key: url
+      name: url
+      type: inputString
+      required: True
+      default: ""
+    - key: path
+      name: path
+      type: inputString
+      required: True
+      default: ""
+    - key: namespace
+      name: namespace
+      type: inputString
+      required: True
+      default: "/"
+    - key: event
+      name: 事件名称
+      type: inputString
+      required: True
+      default: ""
+    - key: data
+      name: 数据
+      type: inputString
+      required: True
+      default: ""
+  ports:
+    in:
+      - id: in1
+        name: in1
+    out:
+      - id: out1
+        name: out1

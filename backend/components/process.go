@@ -3,7 +3,9 @@ package components
 import (
 	"goPipeline/utils"
 	"goPipeline/variables"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func jsonExtractorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
@@ -97,4 +99,18 @@ func globalVariablDeleterMain(currentNode Node, inputData RequestData) (map[stri
 	} else {
 		return map[string]interface{}{}, nil
 	}
+}
+
+func dalayMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	duration := currentNode.Config["duration"].(string)
+	intDuration, _ := strconv.Atoi(duration)
+	time.Sleep(time.Duration(intDuration) * time.Second)
+	result := make(map[string]interface{})
+	for port, data := range currentNode.InputData {
+		result[strings.Replace(port, "in", "out", -1)] = data
+	}
+	for port := range currentNode.InputData {
+		currentNode.InputData[port] = nil
+	}
+	return result, nil
 }

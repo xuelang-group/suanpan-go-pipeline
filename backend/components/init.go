@@ -100,6 +100,10 @@ func (c *Node) Init(nodeType string) {
 		c.main = hiveWriterMain
 	case "CsvUploader":
 		c.main = csvUploaderMain
+	case "SocketIOClient":
+		c.main = socketIOClientMain
+	case "Delay":
+		c.main = dalayMain
 	default:
 	}
 }
