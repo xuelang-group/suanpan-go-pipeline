@@ -27,7 +27,6 @@
     - key: data
       name: 数据
       type: inputString
-      required: True
       default: ""
   ports:
     in:
