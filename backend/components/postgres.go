@@ -43,7 +43,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置")
+		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
 	// tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", currentNode.Config["table"].(string), currentNode.Config["schema"].(string))
@@ -173,7 +173,7 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置")
+		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
 	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
@@ -233,7 +233,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置")
+		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return err
 	}
 
