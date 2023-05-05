@@ -8,19 +8,24 @@ import sys
 
 import uvicorn
 from fastapi import FastAPI
+
 app = FastAPI()
 
-functionSting = '''
+functionSting = """
 def runScript(inputs):
     outputs = []
     %s
     return outputs
-'''
+"""
+
+
 def defaultLoad(x):
     return x
 
+
 def csvLoad(path):
     return pd.read_csv(path)
+
 
 loadMethods = {
     "string": str,
@@ -28,11 +33,13 @@ loadMethods = {
     "float": float,
     "json": defaultLoad,
     "bool": defaultLoad,
-    "csv": csvLoad
+    "csv": csvLoad,
 }
+
 
 def defaultDump(x):
     return x
+
 
 def safeMkdirs(path):
     if not os.path.exists(path):
@@ -42,14 +49,17 @@ def safeMkdirs(path):
             pass
     return path
 
+
 def safeMkdirsForFile(filepath):
     return safeMkdirs(os.path.dirname(os.path.abspath(filepath)))
 
+
 def csvDump(df, nodeid, idx):
-    path = nodeid + "output/"+ "out"+str(idx) +"/data.csv"
+    path = nodeid + "output/" + "out" + str(idx) + "/data.csv"
     safeMkdirsForFile(path)
     df.to_csv(path, encoding="utf-8", index=False)
     return path
+
 
 dumpMethods = {
     str: defaultDump,
@@ -58,7 +68,7 @@ dumpMethods = {
     dict: defaultDump,
     list: defaultDump,
     bool: defaultDump,
-    pd.DataFrame: csvDump
+    pd.DataFrame: csvDump,
 }
 
 typeMappings = {
@@ -68,27 +78,32 @@ typeMappings = {
     dict: "json",
     list: "json",
     bool: "json",
-    pd.DataFrame: "csv"
+    pd.DataFrame: "csv",
 }
 
 
-functionSting = '''
+functionSting = """
 def runScript(inputs):
     outputs = []
     %s
     return outputs
-'''
+"""
+
+
 def getGlobalVar(name):
-    r = requests.get('http://0.0.0.0:8888/variable', params={"name": name})
+    r = requests.get("http://0.0.0.0:8888/variable", params={"name": name})
     return json.loads(r.content)["data"]
 
+
 def setGlobalVar(name, data):
-    r = requests.post('http://0.0.0.0:8888/variable', params={"name": name}, json=data)
+    r = requests.post("http://0.0.0.0:8888/variable", params={"name": name}, json=data)
     return json.loads(r.content)
 
+
 def delGlobalVar(name):
-    r = requests.delete('http://0.0.0.0:8888/variable', params={"name": name})
+    r = requests.delete("http://0.0.0.0:8888/variable", params={"name": name})
     return json.loads(r.content)
+
 
 # def run(inputs=None, script=""):
 #     exec(functionSting % script.replace("\n", "\n    "), globals())
@@ -107,11 +122,12 @@ def delGlobalVar(name):
 #             raise Exception(f"type of {output} is not supported.")
 #     return json.dumps(dumpedOutputs)
 
-def run(nodeid =None, inputs=None, script=""):
+
+def run(nodeid=None, inputs=None, script=""):
     exec(functionSting % script.replace("\n", "\n    "), globals())
     loadedInputs = []
     for input in inputs:
-        input = json.loads(eval("'{}'".format(input)))
+        # input = json.loads(eval("'{}'".format(input)))
         loadedInputs.append(loadMethods[input["type"]](input["data"]))
     dumpedOutputs = []
     try:
@@ -120,10 +136,20 @@ def run(nodeid =None, inputs=None, script=""):
         for output in outputs:
             if type(output) in dumpMethods:
                 if type(output) == pd.DataFrame:
-                    dumpedOutputs.append({"data": dumpMethods[type(output)](output, nodeid, idx), "type": "json"})
+                    dumpedOutputs.append(
+                        {
+                            "data": dumpMethods[type(output)](output, nodeid, idx),
+                            "type": "json",
+                        }
+                    )
                     idx += 1
                 else:
-                    dumpedOutputs.append({"data": dumpMethods[type(output)](output), "type": typeMappings[type(output)]})
+                    dumpedOutputs.append(
+                        {
+                            "data": dumpMethods[type(output)](output),
+                            "type": typeMappings[type(output)],
+                        }
+                    )
             elif output is not None:
                 dumpedOutputs.append({"data": output, "type": "json"})
     except:
@@ -134,12 +160,13 @@ def run(nodeid =None, inputs=None, script=""):
 
 @app.get("/data/")
 async def getInputdata(nodeid, inputdata, script):
-    tmp = inputdata.split("},")
-    if len(tmp) > 1:
-        for i in range(len(tmp) - 1):
-            tmp[i] = tmp[i] + "}"
-    result = run(nodeid,tmp, script)
+    inputs = json.loads(inputdata)
+    # if len(tmp) > 1:
+    #     for i in range(len(tmp) - 1):
+    #         tmp[i] = tmp[i] + "}"
+    result = run(nodeid, inputs, script)
     return result
+
 
 LOGGING_CONFIG = {
     "version": 1,
@@ -174,5 +201,5 @@ LOGGING_CONFIG = {
     },
 }
 
-if __name__=="__main__":
+if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080, log_config=LOGGING_CONFIG)

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -19,12 +18,12 @@ type scriptData struct {
 }
 
 func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	inputStrings := getScriptInputData(currentNode)
-	inputsStringArr := make([]string, 0)
-	for _, inputString := range inputStrings {
-		inputsStringArr = append(inputsStringArr, inputString)
-	}
-	var inputdata = strings.Join(inputsStringArr, ",")
+	inputdata := getScriptInputData(currentNode)
+	// inputsStringArr := make([]string, 0)
+	// for _, inputString := range inputStrings {
+	// 	inputsStringArr = append(inputsStringArr, inputString)
+	// }
+	// var inputdata = strings.Join(inputsStringArr, ",")
 	var script = currentNode.Config["script"].(string)
 	var nodeid = currentNode.Id
 	params := url.Values{}
@@ -67,8 +66,8 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	return getScriptOutputData(outs, currentNode), nil
 }
 
-func getScriptInputData(currentNode Node) []string {
-	inputDatas := make([]string, 0)
+func getScriptInputData(currentNode Node) string {
+	inputDatas := make([]scriptData, 0)
 	for _, v := range currentNode.InputData {
 		inputData := scriptData{}
 		switch i := v.(type) {
@@ -87,10 +86,11 @@ func getScriptInputData(currentNode Node) []string {
 			inputData.Data = i
 			inputData.Type = "json"
 		}
-		inputString, _ := json.Marshal(inputData)
-		inputDatas = append(inputDatas, string(inputString))
+		// inputString, _ := json.Marshal(inputData)
+		inputDatas = append(inputDatas, inputData)
 	}
-	return inputDatas
+	inputString, _ := json.Marshal(inputDatas)
+	return string(inputString)
 }
 
 func readCsv(filePath string) dataframe.DataFrame {
