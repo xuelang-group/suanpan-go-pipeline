@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -51,6 +52,7 @@ func (g *Graph) Init(appType string, appMode string) {
 }
 
 func (g *Graph) graphInit() {
+	os.MkdirAll(filepath.Dir(g.path), os.ModePerm)
 	err := storage.FGetObject(g.key, g.path)
 	if err != nil {
 		log.Info("Fail to Load Config File, init with default value...")
@@ -173,6 +175,7 @@ func (g *Graph) Update(newGraph utils.GraphConfig) {
 	g.Config = newGraph
 	os.Remove(g.path)
 	dataJson, _ := json.Marshal(g.Config)
+	os.MkdirAll(filepath.Dir(g.path), os.ModePerm)
 	os.WriteFile(g.path, dataJson, 0644)
 	storage.FPutObject(g.key, g.path)
 	g.Nodes = []components.Node{}
