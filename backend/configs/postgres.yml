@@ -148,7 +148,7 @@
     - key: chunksize
       name: 每次写入最大行数
       type: inputString
-      default: "10000"
+      default: "1000"
   ports:
     in:
       - id: in1
