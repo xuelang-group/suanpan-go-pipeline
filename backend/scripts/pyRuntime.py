@@ -195,6 +195,7 @@ LOGGING_CONFIG = {
         },
     },
     "loggers": {
+        "": {"level": "WARNING", "handlers": ["default"]},
         "uvicorn": {"handlers": ["default"], "level": "INFO", "propagate": False},
         "uvicorn.error": {"level": "INFO"},
         "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
