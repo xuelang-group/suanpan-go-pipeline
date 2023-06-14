@@ -5,6 +5,12 @@ import requests
 import traceback
 import os
 import sys
+import warnings
+
+def customwarn(message, category, filename, lineno, file=None, line=None):
+    sys.stdout.write(warnings.formatwarning(message, category, filename, lineno))
+
+warnings.showwarning = customwarn
 
 import uvicorn
 from fastapi import FastAPI
