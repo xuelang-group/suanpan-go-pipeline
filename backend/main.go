@@ -44,7 +44,7 @@ func main() {
 	if val, ok := config.GetArgs()["--__python__pkgs"]; ok {
 		if len(val) > 0 {
 			for _, pkg := range strings.Split(val, ",") {
-				cmd := exec.Command("pip", "install", pkg, "-i", "https://pypi.mirrors.ustc.edu.cn/simple")
+				cmd := exec.Command("pip", "install", pkg, "-i", "https://mirrors.aliyun.com/pypi/simple")
 				log.Infof("开始安装python依赖库%s...", pkg)
 				err := cmd.Run()
 				if err != nil {
