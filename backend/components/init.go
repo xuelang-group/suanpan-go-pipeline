@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"goPipeline/utils"
 	"goPipeline/variables"
+	"os"
 	"strings"
 	"sync"
 	"text/template"
@@ -145,11 +146,27 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 						for i := range currentNode.NextNodes {
 							if currentNode.NextNodes[i].Id == tgtInfo[0] {
 								log.Infof("数据下发到节点%s(%s)", currentNode.NextNodes[i].Key, currentNode.NextNodes[i].Id)
-								currentNode.NextNodes[i].InputData[tgtInfo[1]] = data
+								tmpData := data
+								if dataString, ok := tmpData.(string); ok {
+									if strings.HasSuffix(dataString, "data.csv") {
+										dst := strings.Replace(dataString, "data.csv", "data_"+currentNode.NextNodes[i].Id+".csv", -1)
+										utils.CopyFile(dataString, dst)
+										tmpData = dst
+									}
+								}
+								currentNode.NextNodes[i].InputData[tgtInfo[1]] = tmpData
 								triggeredPorts[currentNode.NextNodes[i].Id] = append(triggeredPorts[currentNode.NextNodes[i].Id], tgtInfo[1])
 								if !utils.SlicesContain(readyToRun, currentNode.NextNodes[i].Id) {
 									readyToRun = append(readyToRun, currentNode.NextNodes[i].Id)
 								}
+							}
+						}
+					}
+					if dataString, ok := data.(string); ok {
+						if strings.HasSuffix(dataString, "data.csv") {
+							err = os.Remove(dataString)
+							if err != nil {
+								log.Errorf("Can not remove csv file: %s, with error: %s", dataString, err.Error())
 							}
 						}
 					}
