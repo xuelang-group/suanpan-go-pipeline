@@ -3,6 +3,7 @@ package services
 import (
 	"goPipeline/graph"
 	"goPipeline/utils"
+	"strconv"
 
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 )
@@ -21,7 +22,7 @@ func (h *Services) Update(newGraph utils.GraphConfig) {
 	}
 	h.services = []Service{}
 	for _, node := range newGraph.Nodes {
-		if node.Type == "KafkaConsumer" {
+		if node.Key == "KafkaConsumer" {
 			var address string
 			var topic string
 			var partition string
@@ -32,7 +33,7 @@ func (h *Services) Update(newGraph utils.GraphConfig) {
 				case "topic":
 					topic = param.Value.(string)
 				case "partition":
-					partition = param.Value.(string)
+					partition = strconv.FormatInt(int64(param.Value.(float64)), 10)
 				}
 			}
 			h.services = append(h.services, &KafkaService{Key: node.Key, Id: node.Uuid, Address: address, Topic: topic, Partition: partition, IsDeploy: false, StopChan: make(chan bool)})
