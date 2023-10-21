@@ -10,7 +10,7 @@ import (
 	"github.com/xuelang-group/suanpan-go-sdk/web/socketio"
 )
 
-func getSio(uri string, path string, namespace string) (*socketio.Conn, error) {
+func getSio(uri string, path string, namespace string) (*socketio.ClientConn, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		logrus.Errorf("Parse url error: %v", err)
@@ -22,12 +22,21 @@ func getSio(uri string, path string, namespace string) (*socketio.Conn, error) {
 	}
 	pathOpt := socketio.WithPath(path)
 
-	headerOpt := socketio.WithHeader(web.GetHeaders())
-	namespaceOpt := socketio.WithNamespace(namespace)
+	// u = socketio.GetURL(u.Host, schemeOpt, pathOpt)
+
+	// headerOpt := socketio.WithHeader(web.GetHeaders())
+	// namespaceOpt := socketio.WithNamespace(namespace)
 
 	u = socketio.GetURL(u.Host, schemeOpt, pathOpt)
 
-	return socketio.New(u.String(), headerOpt, namespaceOpt)
+	conn, err := socketio.NewClientConn(u.String(), &socketio.ClientOptions{
+		Namespace:      namespace,
+		Header:         web.GetHeaders(), // not working now
+		Reconnect:      true,
+		EventBufferMax: 1000,
+	})
+
+	return conn, err
 }
 
 func emitEvent(uri string, path string, namespace string, event string, data interface{}) {

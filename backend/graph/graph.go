@@ -199,6 +199,9 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 						go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
 					}
 				}
+			} else if node.Key == "KafkaConsumer" {
+				g.wg.Add(1)
+				go node.Run(node, components.RequestData{Data: inputData[node.Id], ID: id, Extra: extra}, &g.wg, g.stopChan, server)
 			} else {
 				if len(node.InputData) == 0 {
 					g.wg.Add(1)
@@ -241,7 +244,7 @@ func (g *Graph) componentsInit(appType string) {
 		log.Error(err.Error())
 	}
 	componentsToLoad := make(map[string][]string)
-	componentsToLoad["DataConnector"] = []string{"streamConnector.yml", "postgres.yml", "oracle.yml", "script.yml", "dataProcess.yml", "csv.yml", "sqlserver.yml", "hive.yml", "network.yml"}
+	componentsToLoad["DataConnector"] = []string{"streamConnector.yml", "postgres.yml", "oracle.yml", "script.yml", "dataProcess.yml", "csv.yml", "sqlserver.yml", "hive.yml", "network.yml", "kafka.yml"}
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".yml") && utils.SlicesContain(componentsToLoad[appType], f.Name()) {
 			if f.Name() == "streamConnector.yml" {

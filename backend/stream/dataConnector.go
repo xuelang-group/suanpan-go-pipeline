@@ -2,6 +2,7 @@ package stream
 
 import (
 	"goPipeline/graph"
+	"goPipeline/services"
 	"goPipeline/web"
 
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -28,6 +29,7 @@ func (c *DataConnectorComponent) CallHandler(r stream.Request) {
 
 func (c *DataConnectorComponent) InitHandler() {
 	graph.GraphInst.Init(c.Type, c.Mode)
+	services.ServicesManager.Update(graph.GraphInst.Config)
 }
 
 func (c *DataConnectorComponent) SioHandler() {

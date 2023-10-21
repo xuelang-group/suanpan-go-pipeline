@@ -1,0 +1,53 @@
+- type: messageProcessor
+  typeLabel: 消息中间件
+  category: kafka
+  categoryLabel: Kafka
+  name: kaffka消费者
+  key: KafkaConsumer
+  helpUrl:
+  parameters:
+    - key: address
+      name: 地址
+      type: inputString
+      required: True
+      default: ""
+    - key: topic
+      name: Topic
+      type: inputString
+      required: True
+      default: ""
+    - key: partition
+      name: Partition
+      type: inputString
+      default: 0
+  ports:
+    out:
+      - id: out1
+        name: out1
+
+- type: messageProcessor
+  typeLabel: 消息中间件
+  category: kafka
+  categoryLabel: Kafka
+  name: kaffka生产者
+  key: KafkaProducer
+  helpUrl:
+  parameters:
+    - key: address
+      name: 地址
+      type: inputString
+      required: True
+      default: ""
+    - key: topic
+      name: Topic
+      type: inputString
+      required: True
+      default: ""
+    - key: partition
+      name: Partition
+      type: inputString
+      default: 0
+  ports:
+    in:
+      - id: in1
+        name: in1

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -14,46 +13,66 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/beltran/gohive"
+	_ "github.com/lib/pq"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
 )
 
-type hiveDataCol struct {
-	Name    string
-	Type    string
-	Comment string
+type mysqlDataCol struct {
+	Name string
+	Type string
 }
 
-func hiveReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	hiveConn := fmt.Sprintf("%s:%s@%s:%s/%s?auth=PLAIN",
-		currentNode.Config["user"].(string),
-		url.QueryEscape(currentNode.Config["password"].(string)),
-		currentNode.Config["host"].(string),
-		currentNode.Config["port"].(string),
-		currentNode.Config["dbname"].(string))
-	db, err := sql.Open("hive", hiveConn)
+func mysqlInit(currentNode Node) error {
+	mysqlDataType := map[string]string{"bigint": "int64", "bigserial": "int64",
+		"boolean": "bool", "bytea": "[]uint8", "date": "time.Time",
+		"integer": "int32", "smallint": "int16", "smallserial": "int16",
+		"serial": "int32", "text": "string", "time without time zone": "time.Time",
+		"time with time zone": "time.Time", "timestamp without time zone": "time.Time",
+		"timestamp with time zone": "time.Time", "double precision": "float64", "numeric": "float64"}
+	currentNode.Config["mysqlDataType"] = mysqlDataType
+	return nil
+}
+func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
+	db, err := sql.Open("mysql", psqlconn)
 	if err != nil {
-		log.Info("数据库连接失败，请检查配置")
+		log.Infof("数据库连接失败，请检查配置")
 		return map[string]interface{}{}, nil
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
-		log.Info("数据库测试连接失败，请检查配置")
+		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
-	tableCols := make([]hiveDataCol, 0)
+	// tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", currentNode.Config["table"].(string), currentNode.Config["schema"].(string))
+	// colRows, err := db.Query(tableColumnStr)
+	// if err != nil {
+	// 	log.Infof("数据表检索失败")
+	// 	return map[string]interface{}{}, nil
+	// }
+	tableCols := make([]pgDataCol, 0)
+	// defer colRows.Close()
+	// for colRows.Next() {
+	// 	var tableCol pgDataCol
+	// 	err = colRows.Scan(&tableCol.Name, &tableCol.Type)
+	// 	if err != nil {
+	// 		log.Infof("数据表检索失败")
+	// 		return map[string]interface{}{}, nil
+	// 	}
+	// 	tableCols = append(tableCols, tableCol)
+	// }
 	tableQueryStr := ""
 	if len(currentNode.Config["sql"].(string)) == 0 {
-		tableName := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
-		tableQueryStr = fmt.Sprintf("SELECT * FROM %s", tableName)
+		tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
+		tableQueryStr = fmt.Sprintf("SELECT * FROM %s.%s", currentNode.Config["schema"].(string), tablename)
 	} else {
 		tableQueryStr = loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	}
 	rows, err := db.Query(tableQueryStr)
 	if err != nil {
-		log.Info("数据表检索失败")
+		log.Infof("数据表检索失败")
 		return map[string]interface{}{}, nil
 	}
 	columnNames, err := rows.Columns()
@@ -67,7 +86,7 @@ func hiveReaderMain(currentNode Node, inputData RequestData) (map[string]interfa
 		return map[string]interface{}{}, nil
 	}
 	for i, col := range columnNames {
-		tableCol := hiveDataCol{Name: col, Type: columnTypes[i].DatabaseTypeName()}
+		tableCol := pgDataCol{Name: col, Type: columnTypes[i].DatabaseTypeName()}
 		tableCols = append(tableCols, tableCol)
 	}
 	records := make([][]string, 0)
@@ -95,7 +114,7 @@ func hiveReaderMain(currentNode Node, inputData RequestData) (map[string]interfa
 		}
 		err = rows.Scan(recordP...)
 		if err != nil {
-			log.Info("数据表数据检索失败")
+			log.Infof("数据表数据检索失败")
 			return map[string]interface{}{}, nil
 		}
 		data := make([]string, 0)
@@ -133,6 +152,7 @@ func hiveReaderMain(currentNode Node, inputData RequestData) (map[string]interfa
 		log.Error("无法创建临时文件")
 		return map[string]interface{}{}, nil
 	}
+	defer file.Close()
 	w := csv.NewWriter(file)
 	err = w.WriteAll(records)
 	if err != nil {
@@ -143,21 +163,17 @@ func hiveReaderMain(currentNode Node, inputData RequestData) (map[string]interfa
 	return map[string]interface{}{"out1": tmpPath}, nil
 }
 
-func hiveExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	hiveConn := fmt.Sprintf("%s:%s@%s:%s/%s?auth=PLAIN",
-		currentNode.Config["user"].(string),
-		url.QueryEscape(currentNode.Config["password"].(string)),
-		currentNode.Config["host"].(string),
-		currentNode.Config["port"].(string),
-		currentNode.Config["dbname"].(string))
-	db, err := sql.Open("hive", hiveConn)
+func mysqlExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
+
+	db, err := sql.Open("mysql", psqlconn)
 	if err != nil {
 		log.Infof("数据库连接失败，请检查配置")
 		return map[string]interface{}{}, nil
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置")
+		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
 	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
@@ -169,7 +185,7 @@ func hiveExecutorMain(currentNode Node, inputData RequestData) (map[string]inter
 	return map[string]interface{}{"out1": "success"}, nil
 }
 
-func hiveWriterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+func mysqlWriterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	args := config.GetArgs()
 	tmpPath := currentNode.InputData["in1"].(string)
 	if _, err := os.Stat(tmpPath); errors.Is(err, os.ErrNotExist) {
@@ -194,7 +210,7 @@ func hiveWriterMain(currentNode Node, inputData RequestData) (map[string]interfa
 			log.Errorf("Can not remove csv file: %s, with error: %s", tmpPath, err.Error())
 		}
 	}()
-	csvToSqlErr := ReadCsvSaveToHive(csvFile, currentNode)
+	csvToSqlErr := ReadCsvToSql(csvFile, currentNode)
 	if csvToSqlErr != nil {
 		log.Error("未能正常写入数据库")
 		return map[string]interface{}{}, nil
@@ -202,36 +218,32 @@ func hiveWriterMain(currentNode Node, inputData RequestData) (map[string]interfa
 	return map[string]interface{}{"out1": "success"}, nil
 }
 
-func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
+func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 	csvReader := csv.NewReader(r)
 	records, err := csvReader.ReadAll()
 	if err != nil {
 		return err
 	}
 	//链接数据库
-	hiveConn := fmt.Sprintf("%s:%s@%s:%s/%s?auth=PLAIN",
-		currentNode.Config["user"].(string),
-		url.QueryEscape(currentNode.Config["password"].(string)),
-		currentNode.Config["host"].(string),
-		currentNode.Config["port"].(string),
-		currentNode.Config["dbname"].(string))
-	db, err := sql.Open("hive", hiveConn)
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
+	db, err := sql.Open("mysql", psqlconn)
 	if err != nil {
-		log.Info("数据库连接失败，请检查配置")
+		log.Infof("数据库连接失败，请检查配置")
 		return err
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
-		log.Info("数据库测试连接失败，请检查配置")
+		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return err
 	}
 
-	tableName := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
-	chunkSizeRaw := currentNode.Config["chunkSize"].(string)
+	tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
+	schema := currentNode.Config["databaseChoose"].(string)
+	chunksizeRaw := currentNode.Config["chunksize"].(string)
 	mode := currentNode.Config["mode"].(string)
-	chunkSize, err := strconv.Atoi(chunkSizeRaw)
+	chunksize, err := strconv.Atoi(chunksizeRaw)
 	if err != nil {
-		log.Info("chunkSize设置非数值")
+		log.Infof("chunksize设置非数值")
 		return err
 	}
 
@@ -240,32 +252,31 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 		columns := records[0]
 		tableSchemaArr := make([]string, 0)
 		for i := 1; i < len(columns); i++ {
-			tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar(100)")
+			tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar")
 
 		}
 		tableSchemaStr := strings.Join(tableSchemaArr, ",")
-		tableCreateStr := fmt.Sprintf("Create Table %s (%s)", tableName, tableSchemaStr)
-		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s", tableName)
+		tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableSchemaStr)
+		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
 		_, err := db.Exec(tableDropStr)
 		if err != nil {
-			log.Infof("删除原表失败%s", err.Error())
+			log.Infof("删除原表失败")
 			return err
 		}
 		_, err = db.Exec(tableCreateStr)
 		if err != nil {
-			log.Info(tableCreateStr)
-			log.Infof("创建表失败%s", err.Error())
+			log.Infof("创建表失败")
 			return err
 		}
 		//插入数据
 		l := len(records) - 1
-		n := l/chunkSize + 1
+		n := l/chunksize + 1
 
 		for iter := 0; iter < n; iter++ {
 			var tableInsertValues string
 			tableInsertArr := make([]string, 0)
 			if iter < n-1 {
-				for i := iter*chunkSize + 1; i < chunkSize*(iter+1)+1; i++ {
+				for i := iter*chunksize + 1; i < chunksize*(iter+1)+1; i++ {
 					var rowTmpStr string
 					recordsArr := make([]string, 0)
 					for colIdx, col := range records[i] {
@@ -277,7 +288,7 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 					tableInsertArr = append(tableInsertArr, rowTmpStr)
 				}
 			} else {
-				for i := iter*chunkSize + 1; i < l+1; i++ {
+				for i := iter*chunksize + 1; i < l+1; i++ {
 					var rowTmpStr string
 					recordsArr := make([]string, 0)
 					for colIdx, col := range records[i] {
@@ -296,10 +307,10 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 					tableColumns = append(tableColumns, "\""+string(columns[i])+"\"")
 
 				}
-				tableInsertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s;", tableName, strings.Join(tableColumns, ","), tableInsertValues)
+				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(tableColumns, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("覆盖写入表失败%s", err.Error())
+					log.Infof("覆盖写入表失败")
 					return err
 				}
 			}
@@ -307,58 +318,57 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 
 	} else {
 		//判断表是否存在并获取表头信息
-		tableColumnStr := fmt.Sprintf("Describe %s;", tableName)
+		tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
 		colRows, err := db.Query(tableColumnStr)
 		if err != nil {
-			log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+			log.Infof("数据表检索失败, 请确认要写入的表是否存在")
 			return err
 		}
-		tableCols := make([]hiveDataCol, 0)
+		tableCols := make([]pgDataCol, 0)
 		defer colRows.Close()
 		for colRows.Next() {
-			var tableCol hiveDataCol
-			err = colRows.Scan(&tableCol.Name, &tableCol.Type, &tableCol.Comment)
+			var tableCol pgDataCol
+			err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
 				return err
 			}
 			tableCols = append(tableCols, tableCol)
 		}
 		if len(tableCols) == 0 {
-			log.Info("数据表检索失败, 开始自动创建数据表")
+			log.Infof("数据表检索失败, 开始自动创建数据表")
 			//新建表
 			columns := records[0]
 			tableSchemaArr := make([]string, 0)
 			for i := 1; i < len(columns); i++ {
-				tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar(100)")
+				tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar")
 
 			}
 			tableSchemaStr := strings.Join(tableSchemaArr, ",")
-			tableCreateStr := fmt.Sprintf("Create Table %s (%s)", tableName, tableSchemaStr)
-			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s", tableName)
+			tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableSchemaStr)
+			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
 			_, err := db.Exec(tableDropStr)
 			if err != nil {
-				log.Infof("删除原表失败%s", err.Error())
+				log.Infof("删除原表失败")
 				return err
 			}
 			_, err = db.Exec(tableCreateStr)
 			if err != nil {
-				log.Info(tableCreateStr)
-				log.Infof("创建表失败%s", err.Error())
+				log.Infof("创建表失败")
 				return err
 			}
-			tableColumnStr = fmt.Sprintf("Describe '%s'", tableName)
+			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
 			colRows, err := db.Query(tableColumnStr)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
 				return err
 			}
 			defer colRows.Close()
 			for colRows.Next() {
-				var tableCol hiveDataCol
+				var tableCol pgDataCol
 				err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 				if err != nil {
-					log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+					log.Infof("数据表检索失败, 请确认要写入的表是否存在")
 					return err
 				}
 				tableCols = append(tableCols, tableCol)
@@ -366,7 +376,7 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 		}
 		headers := make([]string, 0)
 		for _, col := range tableCols {
-			headers = append(headers, col.Name)
+			headers = append(headers, "\""+col.Name+"\"")
 		}
 		headersTypes := make([]string, 0)
 		for _, col := range tableCols {
@@ -376,29 +386,29 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 		for _, header := range headers {
 			colIdx := -1
 			for colNum, col := range records[0] {
-				if col == header {
+				if "\""+col+"\"" == header {
 					colIdx = colNum
 				}
 			}
 			headerToRecords[header] = colIdx
 		}
 		if strings.Compare(mode, "clearAndAppend") == 0 {
-			log.Info("开始清空并追加")
-			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s", tableName)
+			log.Infof("开始清空并追加")
+			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, tablename)
 			_, err := db.Exec(tableClearStr)
 			if err != nil {
-				log.Info("清空表失败")
+				log.Infof("清空表失败")
 				return err
 			}
 		}
 		//插入数据
 		l := len(records) - 1
-		n := l/chunkSize + 1
+		n := l/chunksize + 1
 		for iter := 0; iter < n; iter++ {
 			var tableInsertValues string
 			tableInsertArr := make([]string, 0)
 			if iter < n-1 {
-				for i := iter*chunkSize + 1; i < chunkSize*(iter+1)+1; i++ {
+				for i := iter*chunksize + 1; i < chunksize*(iter+1)+1; i++ {
 					var rowTmpStr string
 					recordsArr := make([]string, 0)
 					for ctype := 0; ctype < len(headers); ctype++ {
@@ -419,7 +429,7 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 					tableInsertArr = append(tableInsertArr, rowTmpStr)
 				}
 			} else {
-				for i := iter*chunkSize + 1; i < l+1; i++ {
+				for i := iter*chunksize + 1; i < l+1; i++ {
 					var rowTmpStr string
 					recordsArr := make([]string, 0)
 					for ctype := 0; ctype < len(headers); ctype++ {
@@ -442,8 +452,7 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 			}
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
-				tableInsertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s;", tableName, strings.Join(headers, ","), tableInsertValues)
-				log.Info(tableInsertStr)
+				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
 					log.Infof("追加写入表失败：%s", err.Error())

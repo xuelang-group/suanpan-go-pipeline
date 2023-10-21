@@ -36,6 +36,7 @@ type Node struct {
 	main        func(currentNode Node, inputData RequestData) (map[string]interface{}, error)
 	initNode    func(currentNode Node) error
 	Status      int // 0: stoped 1： running -1：error
+	// ServiceHandler services.Service
 }
 
 type RequestData struct {
@@ -105,6 +106,9 @@ func (c *Node) Init(nodeType string) {
 		c.main = socketIOClientMain
 	case "Delay":
 		c.main = dalayMain
+	case "KafkaConsumer":
+		c.main = kafkaConsumerMain
+		// c.ServiceHandler = &services.KafkaService{Key: c.Key, Id: c.Id, Address: c.Config["address"].(string), Topic: c.Config["topic"].(string), Partition: c.Config["partition"].(int), IsDeploy: false, StopChan: make(chan bool)}
 	default:
 	}
 }

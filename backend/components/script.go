@@ -3,7 +3,7 @@ package components
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -42,7 +42,7 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	fmt.Println(urlPath)
 	resp, err := http.Get(urlPath)
 	defer resp.Body.Close()
-	stdout, err := ioutil.ReadAll(resp.Body)
+	stdout, err := io.ReadAll(resp.Body)
 	fmt.Println(string(stdout))
 	// cmdStrings := make([]string, 0)
 	// cmdStrings = append(cmdStrings, "scripts/pyRuntime.py")

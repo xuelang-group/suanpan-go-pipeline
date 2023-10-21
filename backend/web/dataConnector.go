@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"goPipeline/graph"
+	"goPipeline/services"
 	"goPipeline/utils"
 	"goPipeline/variables"
 	"net/http"
@@ -92,6 +93,7 @@ func RunWeb(appType string) {
 
 	server.OnEvent("/", "graph.update", func(s socketio.Conn, msg utils.GraphConfig) RespondMsg {
 		graph.GraphInst.Update(msg)
+		services.ServicesManager.Update(msg)
 		return RespondMsg{true, graph.GraphInst.Config}
 	})
 
@@ -121,6 +123,11 @@ func RunWeb(appType string) {
 
 	server.OnEvent("/", "graph.status.set", func(s socketio.Conn, msg map[string]interface{}) RespondMsg {
 		graph.GraphInst.Status = uint(msg["status"].(float64))
+		if graph.GraphInst.Status == 0 {
+			services.ServicesManager.Release()
+		} else {
+			services.ServicesManager.Deploy(&graph.GraphInst)
+		}
 		return RespondMsg{true, graph.GraphInst.Status}
 	})
 

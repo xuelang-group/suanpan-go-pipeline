@@ -11,7 +11,6 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/xuelang-group/suanpan-go-sdk v1.0.13
 	gopkg.in/yaml.v3 v3.0.1
-	sqlflow.org/gohive v0.0.0-20220817082204-15a5e01fd889
 )
 
 require (
@@ -35,16 +34,19 @@ require (
 	github.com/gomodule/redigo v1.8.9 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
+	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mcuadros/go-defaults v1.2.0 // indirect
 	github.com/minio/minio-go v6.0.14+incompatible // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
+	github.com/segmentio/kafka-go v0.4.44 // indirect
 	github.com/thoas/go-funk v0.9.3 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/net v0.16.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
