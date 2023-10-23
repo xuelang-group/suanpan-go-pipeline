@@ -8,7 +8,7 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-func kafkaProducer(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+func kafkaProducerMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	topic := currentNode.Config["topic"].(string)
 	partition := currentNode.Config["partition"].(int)
 	address := currentNode.Config["address"].(string)
