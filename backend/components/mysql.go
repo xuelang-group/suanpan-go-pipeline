@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
@@ -35,8 +35,8 @@ func mysqlInit(currentNode Node) error {
 	return nil
 }
 func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
-	db, err := sql.Open("mysql", psqlconn)
+	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
+	db, err := sql.Open("mysql", mysqluri)
 	if err != nil {
 		log.Infof("数据库连接失败，请检查配置")
 		return map[string]interface{}{}, nil
@@ -46,27 +46,11 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
-	// tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", currentNode.Config["table"].(string), currentNode.Config["schema"].(string))
-	// colRows, err := db.Query(tableColumnStr)
-	// if err != nil {
-	// 	log.Infof("数据表检索失败")
-	// 	return map[string]interface{}{}, nil
-	// }
-	tableCols := make([]pgDataCol, 0)
-	// defer colRows.Close()
-	// for colRows.Next() {
-	// 	var tableCol pgDataCol
-	// 	err = colRows.Scan(&tableCol.Name, &tableCol.Type)
-	// 	if err != nil {
-	// 		log.Infof("数据表检索失败")
-	// 		return map[string]interface{}{}, nil
-	// 	}
-	// 	tableCols = append(tableCols, tableCol)
-	// }
+	tableCols := make([]mysqlDataCol, 0)
 	tableQueryStr := ""
 	if len(currentNode.Config["sql"].(string)) == 0 {
 		tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
-		tableQueryStr = fmt.Sprintf("SELECT * FROM %s.%s", currentNode.Config["schema"].(string), tablename)
+		tableQueryStr = fmt.Sprintf("SELECT * FROM %s", tablename)
 	} else {
 		tableQueryStr = loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	}
@@ -86,7 +70,7 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 		return map[string]interface{}{}, nil
 	}
 	for i, col := range columnNames {
-		tableCol := pgDataCol{Name: col, Type: columnTypes[i].DatabaseTypeName()}
+		tableCol := mysqlDataCol{Name: col, Type: columnTypes[i].DatabaseTypeName()}
 		tableCols = append(tableCols, tableCol)
 	}
 	records := make([][]string, 0)
@@ -164,9 +148,9 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 }
 
 func mysqlExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
+	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
 
-	db, err := sql.Open("mysql", psqlconn)
+	db, err := sql.Open("mysql", mysqluri)
 	if err != nil {
 		log.Infof("数据库连接失败，请检查配置")
 		return map[string]interface{}{}, nil
@@ -225,8 +209,8 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 		return err
 	}
 	//链接数据库
-	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
-	db, err := sql.Open("mysql", psqlconn)
+	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
+	db, err := sql.Open("mysql", mysqluri)
 	if err != nil {
 		log.Infof("数据库连接失败，请检查配置")
 		return err
@@ -315,7 +299,6 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 				}
 			}
 		}
-
 	} else {
 		//判断表是否存在并获取表头信息
 		tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
