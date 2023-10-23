@@ -194,7 +194,7 @@ func mysqlWriterMain(currentNode Node, inputData RequestData) (map[string]interf
 			log.Errorf("Can not remove csv file: %s, with error: %s", tmpPath, err.Error())
 		}
 	}()
-	csvToSqlErr := ReadCsvToSql(csvFile, currentNode)
+	csvToSqlErr := ReadCsvToMySql(csvFile, currentNode)
 	if csvToSqlErr != nil {
 		log.Error("未能正常写入数据库")
 		return map[string]interface{}{}, nil
@@ -222,7 +222,8 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 	}
 
 	tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
-	schema := currentNode.Config["databaseChoose"].(string)
+	dbname := currentNode.Config["dbname"].(string)
+	// schema := currentNode.Config["databaseChoose"].(string)
 	chunksizeRaw := currentNode.Config["chunksize"].(string)
 	mode := currentNode.Config["mode"].(string)
 	chunksize, err := strconv.Atoi(chunksizeRaw)
@@ -236,12 +237,12 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 		columns := records[0]
 		tableSchemaArr := make([]string, 0)
 		for i := 1; i < len(columns); i++ {
-			tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar")
+			tableSchemaArr = append(tableSchemaArr, "`"+string(columns[i])+"`"+" "+"varchar(255)")
 
 		}
 		tableSchemaStr := strings.Join(tableSchemaArr, ",")
-		tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableSchemaStr)
-		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
+		tableCreateStr := fmt.Sprintf("Create Table `%s` (%s);", tablename, tableSchemaStr)
+		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s", tablename)
 		_, err := db.Exec(tableDropStr)
 		if err != nil {
 			log.Infof("删除原表失败")
@@ -288,10 +289,10 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableColumns := make([]string, 0)
 				for i := 1; i < len(columns); i++ {
-					tableColumns = append(tableColumns, "\""+string(columns[i])+"\"")
+					tableColumns = append(tableColumns, "`"+string(columns[i])+"`")
 
 				}
-				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(tableColumns, ","), tableInsertValues)
+				tableInsertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s;", tablename, strings.Join(tableColumns, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
 					log.Infof("覆盖写入表失败")
@@ -301,16 +302,16 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 		}
 	} else {
 		//判断表是否存在并获取表头信息
-		tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
+		tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, dbname)
 		colRows, err := db.Query(tableColumnStr)
 		if err != nil {
 			log.Infof("数据表检索失败, 请确认要写入的表是否存在")
 			return err
 		}
-		tableCols := make([]pgDataCol, 0)
+		tableCols := make([]mysqlDataCol, 0)
 		defer colRows.Close()
 		for colRows.Next() {
-			var tableCol pgDataCol
+			var tableCol mysqlDataCol
 			err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 			if err != nil {
 				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
@@ -324,12 +325,12 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 			columns := records[0]
 			tableSchemaArr := make([]string, 0)
 			for i := 1; i < len(columns); i++ {
-				tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar")
+				tableSchemaArr = append(tableSchemaArr, "`"+string(columns[i])+"`"+" "+"varchar(255)")
 
 			}
 			tableSchemaStr := strings.Join(tableSchemaArr, ",")
-			tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableSchemaStr)
-			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
+			tableCreateStr := fmt.Sprintf("Create Table %s (%s);", tablename, tableSchemaStr)
+			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s", tablename)
 			_, err := db.Exec(tableDropStr)
 			if err != nil {
 				log.Infof("删除原表失败")
@@ -340,7 +341,7 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 				log.Infof("创建表失败")
 				return err
 			}
-			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
+			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, dbname)
 			colRows, err := db.Query(tableColumnStr)
 			if err != nil {
 				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
@@ -348,7 +349,7 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 			}
 			defer colRows.Close()
 			for colRows.Next() {
-				var tableCol pgDataCol
+				var tableCol mysqlDataCol
 				err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 				if err != nil {
 					log.Infof("数据表检索失败, 请确认要写入的表是否存在")
@@ -359,7 +360,7 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 		}
 		headers := make([]string, 0)
 		for _, col := range tableCols {
-			headers = append(headers, "\""+col.Name+"\"")
+			headers = append(headers, "`"+col.Name+"`")
 		}
 		headersTypes := make([]string, 0)
 		for _, col := range tableCols {
@@ -369,7 +370,7 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 		for _, header := range headers {
 			colIdx := -1
 			for colNum, col := range records[0] {
-				if "\""+col+"\"" == header {
+				if "`"+col+"`" == header {
 					colIdx = colNum
 				}
 			}
@@ -377,7 +378,7 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 		}
 		if strings.Compare(mode, "clearAndAppend") == 0 {
 			log.Infof("开始清空并追加")
-			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, tablename)
+			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s", tablename)
 			_, err := db.Exec(tableClearStr)
 			if err != nil {
 				log.Infof("清空表失败")
@@ -435,7 +436,7 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 			}
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
-				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
+				tableInsertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s;", tablename, strings.Join(headers, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
 					log.Infof("追加写入表失败：%s", err.Error())
