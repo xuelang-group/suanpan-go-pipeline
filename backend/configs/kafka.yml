@@ -14,12 +14,16 @@
     - key: topic
       name: Topic
       type: inputString
+      default: ""
+    - key: topics
+      name: Topics(逗号分隔)
+      type: inputString
+      default: ""
+    - key: groupId
+      name: GroupId
+      type: inputString
       required: True
       default: ""
-    - key: partition
-      name: Partition
-      type: inputString
-      default: 0
   ports:
     out:
       - id: out1
