@@ -36,7 +36,7 @@ func (h *Services) Update(newGraph utils.GraphConfig) {
 					partition = strconv.FormatInt(int64(param.Value.(float64)), 10)
 				}
 			}
-			h.services = append(h.services, &KafkaService{Key: node.Key, Id: node.Uuid, Address: address, Topic: topic, Partition: partition, IsDeploy: false, StopChan: make(chan bool)})
+			h.services = append(h.services, &KafkaService{Key: node.Key, Id: node.Uuid, Address: address, Topic: topic, Partition: partition, StopChan: make(chan bool)})
 		}
 	}
 	for _, service := range h.services {

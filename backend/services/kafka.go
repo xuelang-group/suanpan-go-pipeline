@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"goPipeline/graph"
 	"strings"
 
@@ -19,7 +18,7 @@ type KafkaService struct {
 	Topic     string
 	Partition string
 	// Graph     graph.Graph
-	IsDeploy bool
+	// IsDeploy bool
 	StopChan chan bool
 }
 
@@ -37,7 +36,7 @@ func getKafkaReader(kafkaURL, topic, groupID string) *kafka.Reader {
 func (h *KafkaService) Deploy(g *graph.Graph) {
 	select {
 	case <-h.StopChan:
-		log.Infof("节点%s(%s)释放成功", h.Key, h.Id)
+		log.Infof("节点%s(%s)停止消费 address:%s topic:%s partition: %s 中的消息", h.Key, h.Id, h.Address, h.Topic, h.Partition)
 	default:
 		// get kafka reader using environment variables.
 		kafkaURL := h.Address
@@ -48,17 +47,17 @@ func (h *KafkaService) Deploy(g *graph.Graph) {
 
 		defer reader.Close()
 
-		fmt.Println("start consuming ... !!")
+		log.Infof("节点%s(%s)开始消费 address:%s topic:%s partition: %s 中的消息", h.Key, h.Id, kafkaURL, topic, groupID)
 		for {
 			m, err := reader.ReadMessage(context.Background())
 			if err != nil {
-				log.Errorf("读取Kafka消息失败:", err)
+				log.Errorf("读取Kafka消息失败: %s", err)
 			}
 			inputData := map[string]string{h.Id: string(m.Value)}
 			id := util.GenerateUUID()
 			extra := ""
 			g.Run(inputData, id, extra, nil, false)
-			fmt.Printf("message at topic:%v partition:%v offset:%v	%s = %s\n", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value))
+			log.Infof("在 topic:%v partition:%v offset:%v 中的消息 %s = %s 消费成功", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value))
 		}
 	}
 	// graph.GraphInst.Run(currentNode.NextNodes[0], inputData)
