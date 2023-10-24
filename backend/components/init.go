@@ -116,6 +116,8 @@ func (c *Node) Init(nodeType string) {
 		c.main = mysqlExecutorMain
 	case "MysqlWriter":
 		c.main = mysqlWriterMain
+	case "MysqlJsonReader":
+		c.main = mysqlJsonReaderMain
 		// c.ServiceHandler = &services.KafkaService{Key: c.Key, Id: c.Id, Address: c.Config["address"].(string), Topic: c.Config["topic"].(string), Partition: c.Config["partition"].(int), IsDeploy: false, StopChan: make(chan bool)}
 	default:
 	}
