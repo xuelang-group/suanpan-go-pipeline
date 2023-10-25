@@ -131,6 +131,8 @@
   name: 字符串转Json
   key: String2Json
   helpUrl:
+  parameters:
+    -
   ports:
     in:
       - id: in1
