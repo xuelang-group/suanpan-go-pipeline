@@ -79,7 +79,11 @@ func (h *KafkaService) Deploy(g *graph.Graph) {
 }
 
 func (h *KafkaService) Release() {
-	h.kafkaReader.Close()
+	if h.kafkaReader != nil {
+		h.kafkaReader.Close()
+		h.kafkaReader = nil
+	}
+	// h.kafkaReader.Close()
 }
 
 func (h *KafkaService) Init() {

@@ -1,15 +1,37 @@
 package components
 
 import (
+	"encoding/json"
 	"goPipeline/utils"
 	"goPipeline/variables"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 )
 
+func string2JsonMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	inputString := currentNode.InputData["in1"].(string)
+	inputJson := make(map[string]interface{})
+	err := json.Unmarshal([]byte(inputString), &inputJson)
+	if err != nil {
+		log.Infof("Json解析失败: %s", err)
+		return map[string]interface{}{}, nil
+	}
+	return map[string]interface{}{"out1": inputJson}, nil
+}
+
 func jsonExtractorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	return map[string]interface{}{}, nil
+	inputString := currentNode.InputData["in1"].(string)
+	inputJson := make(map[string]interface{})
+	err := json.Unmarshal([]byte(inputString), &inputJson)
+	if err != nil {
+		log.Infof("Json解析失败: %s", err)
+		return map[string]interface{}{}, nil
+	}
+	result := loadParameter(currentNode.Config["param1"].(string), inputJson)
+	return map[string]interface{}{"out1": result}, nil
 }
 
 func dataSyncMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {

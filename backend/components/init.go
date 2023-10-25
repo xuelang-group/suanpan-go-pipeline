@@ -57,6 +57,8 @@ func (c *Node) Init(nodeType string) {
 		c.main = streamOutMain
 	case "JsonExtractor":
 		c.main = jsonExtractorMain
+	case "String2Json":
+		c.main = string2JsonMain
 	case "DataSync":
 		c.main = dataSyncMain
 	case "GlobalVariableSetter":

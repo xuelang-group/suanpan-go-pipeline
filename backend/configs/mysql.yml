@@ -51,7 +51,7 @@
   typeLabel: 数据库
   category: read
   categoryLabel: 数据库读取
-  name: Mysql数据库读取
+  name: Mysql数据库读取(Json)
   key: MysqlJsonReader
   helpUrl:
   parameters:

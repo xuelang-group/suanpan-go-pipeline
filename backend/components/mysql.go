@@ -3,7 +3,6 @@ package components
 import (
 	"database/sql"
 	"encoding/csv"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -242,9 +241,8 @@ func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]in
 		recordNum += 1
 		records = append(records, data)
 	}
-	recordsJson, _ := json.Marshal(records)
 
-	return map[string]interface{}{"out1": string(recordsJson)}, nil
+	return map[string]interface{}{"out1": records}, nil
 }
 
 func mysqlExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
