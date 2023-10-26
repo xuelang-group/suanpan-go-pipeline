@@ -125,8 +125,10 @@ func RunWeb(appType string) {
 		graph.GraphInst.Status = uint(msg["status"].(float64))
 		if graph.GraphInst.Status == 0 {
 			services.ServicesManager.Release()
+			graph.GraphInst.Release()
 		} else {
 			services.ServicesManager.Deploy(&graph.GraphInst)
+			graph.GraphInst.Initialize()
 		}
 		return RespondMsg{true, graph.GraphInst.Status}
 	})

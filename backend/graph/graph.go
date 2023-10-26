@@ -180,11 +180,21 @@ func (g *Graph) Update(newGraph utils.GraphConfig) {
 	os.MkdirAll(filepath.Dir(g.path), os.ModePerm)
 	os.WriteFile(g.path, dataJson, 0644)
 	storage.FPutObject(g.key, g.path)
+	g.Release()
+	g.Nodes = []components.Node{}
+	g.nodesInit()
+}
+
+func (g *Graph) Release() {
 	for node := range g.Nodes {
 		g.Nodes[node].Release()
 	}
-	g.Nodes = []components.Node{}
-	g.nodesInit()
+}
+
+func (g *Graph) Initialize() {
+	for node := range g.Nodes {
+		g.Nodes[node].Initialize()
+	}
 }
 
 func (g *Graph) Run(inputData map[string]string, id string, extra string, server *socketio.Server, useCache bool) {

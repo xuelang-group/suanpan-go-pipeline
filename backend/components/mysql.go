@@ -49,6 +49,9 @@ func mysqlInit(currentNode Node) error {
 }
 
 func mysqlRlease(currentNode Node) error {
+	if currentNode.Config["mysqlDB"] == nil {
+		return nil
+	}
 	db := currentNode.Config["mysqlDB"].(*sql.DB)
 	db.Close()
 	return nil

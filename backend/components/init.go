@@ -50,6 +50,7 @@ func (c *Node) Init(nodeType string) {
 	c.Run = Run
 	c.UpdateInput = UpdateInput
 	c.initNode = defaultInit
+	c.releaseNode = defaultRelease
 	// c.dumpOutput = dumpOutput
 	switch nodeType {
 	case "StreamIn":
@@ -132,6 +133,9 @@ func (c *Node) Init(nodeType string) {
 		c.releaseNode = mysqlRlease
 	default:
 	}
+}
+
+func (c *Node) Initialize() {
 	c.initNode(*c)
 }
 
@@ -259,5 +263,9 @@ func loadParameter(parameter string, vars map[string]interface{}) string {
 }
 
 func defaultInit(currentNode Node) error {
+	return nil
+}
+
+func defaultRelease(currentNode Node) error {
 	return nil
 }
