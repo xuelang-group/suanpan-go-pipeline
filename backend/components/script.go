@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -53,7 +54,15 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 
 func getScriptInputData(currentNode Node) string {
 	inputDatas := make([]scriptData, 0)
-	for _, v := range currentNode.InputData {
+	inputPorts := make([]string, 0)
+	for port := range currentNode.InputData {
+		inputPorts = append(inputPorts, port)
+	}
+	sort.Slice(inputPorts, func(i, j int) bool {
+		return inputPorts[i] < inputPorts[j]
+	})
+	for _, port := range inputPorts {
+		v := currentNode.InputData[port]
 		inputData := scriptData{}
 		switch i := v.(type) {
 		case dataframe.DataFrame:
