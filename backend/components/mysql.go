@@ -35,63 +35,51 @@ func mysqlInit(currentNode Node) error {
 	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
 	db, err := sql.Open("mysql", mysqluri)
 	if err != nil {
-		log.Infof("数据库连接失败，请检查配置: %s", err.Error())
+		log.Errorf("Mysql组件(%s)初始化数据库连接失败，请检查配置: %s", currentNode.Id, err.Error())
 		currentNode.Config["mysqlConfigFail"] = true
 	} else {
 		currentNode.Config["mysqlConfigFail"] = false
 	}
 	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+		log.Errorf("Mysql组件(%s)数据库测试连接失败，请检查配置, 具体原因为: %s", currentNode.Id, err.Error())
 		currentNode.Config["mysqlConfigFail"] = true
 	}
 	currentNode.Config["mysqlDB"] = db
+	return nil
+}
+
+func mysqlRlease(currentNode Node) error {
+	db := currentNode.Config["mysqlDB"].(*sql.DB)
+	db.Close()
 	return nil
 }
 
 func rebuildMysqlConnection(currentNode Node) error {
+	log.Infof("Mysql组件(%s)尝试重新建立链接", currentNode.Id)
 	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
 	db, err := sql.Open("mysql", mysqluri)
 	if err != nil {
-		log.Infof("数据库连接失败，请检查配置: %s", err.Error())
+		log.Errorf("Mysql组件(%s)初始化数据库连接失败，请检查配置: %s", currentNode.Id, err.Error())
 		currentNode.Config["mysqlConfigFail"] = true
+		return err
 	} else {
 		currentNode.Config["mysqlConfigFail"] = false
 	}
 	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+		log.Errorf("Mysql组件(%s)数据库测试连接失败，请检查配置, 具体原因为: %s", currentNode.Id, err.Error())
 		currentNode.Config["mysqlConfigFail"] = true
+		return err
 	}
 	currentNode.Config["mysqlDB"] = db
 	return nil
 }
 
-func checkMysqlConnection(currentNode Node) error {
-	if currentNode.Config["mysqlConfigFail"].(bool) {
-		rebuildMysqlConnection(currentNode)
-		return nil
-	}
-	db := currentNode.Config["mysqlDB"].(*sql.DB)
-	if err := db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
-		currentNode.Config["mysqlConfigFail"] = true
-	}
-	return nil
-}
-
 func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	// mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
-	// db, err := sql.Open("mysql", mysqluri)
-	// if err != nil {
-	// 	log.Infof("数据库连接失败，请检查配置")
-	// 	return map[string]interface{}{}, nil
-	// }
-	// defer db.Close()
-	// if err = db.Ping(); err != nil {
-	// 	log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
-	// 	return map[string]interface{}{}, nil
-	// }
 	if currentNode.Config["mysqlConfigFail"].(bool) {
-		rebuildMysqlConnection(currentNode)
+		err := rebuildMysqlConnection(currentNode)
+		if err != nil {
+			return map[string]interface{}{}, nil
+		}
 	}
 	db := currentNode.Config["mysqlDB"].(*sql.DB)
 	tableCols := make([]mysqlDataCol, 0)
@@ -104,17 +92,23 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 	}
 	rows, err := db.Query(tableQueryStr)
 	if err != nil {
-		log.Infof("数据表检索失败")
+		log.Errorf("Mysql读取组件(%s)数据表检索失败: %s", currentNode.Id, err.Error())
+		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
+		currentNode.Config["mysqlConfigFail"] = true
 		return map[string]interface{}{}, nil
 	}
 	columnNames, err := rows.Columns()
 	if err != nil {
-		log.Info("查询数据表结构失败")
+		log.Errorf("Mysql读取组件(%s)查询数据表结构失败: %s", currentNode.Id, err.Error())
+		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
+		currentNode.Config["mysqlConfigFail"] = true
 		return map[string]interface{}{}, nil
 	}
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
-		log.Info("查询数据表类型失败")
+		log.Errorf("Mysql读取组件(%s)查询数据表类型失败: %s", currentNode.Id, err.Error())
+		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
+		currentNode.Config["mysqlConfigFail"] = true
 		return map[string]interface{}{}, nil
 	}
 	for i, col := range columnNames {
@@ -146,7 +140,9 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 		}
 		err = rows.Scan(recordP...)
 		if err != nil {
-			log.Infof("数据表数据检索失败")
+			log.Errorf("Mysql读取组件(%s)数据表数据检索失败: %s", currentNode.Id, err.Error())
+			log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
+			currentNode.Config["mysqlConfigFail"] = true
 			return map[string]interface{}{}, nil
 		}
 		data := make([]string, 0)
@@ -181,38 +177,28 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 	os.Remove(tmpPath)
 	file, err := os.Create(tmpPath)
 	if err != nil {
-		log.Error("无法创建临时文件")
+		log.Errorf("Mysql读取组件(%s)无法创建临时文件: %s", currentNode.Id, err.Error())
+		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 		return map[string]interface{}{}, nil
 	}
 	defer file.Close()
 	w := csv.NewWriter(file)
 	err = w.WriteAll(records)
 	if err != nil {
-		log.Error("无法写入csv数据")
+		log.Errorf("Mysql读取组件(%s)无法写入csv数据: %s", currentNode.Id, err.Error())
+		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 		return map[string]interface{}{}, nil
 	}
-
-	go func() {
-		checkMysqlConnection(currentNode)
-	}()
 
 	return map[string]interface{}{"out1": tmpPath}, nil
 }
 
 func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	// mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
-	// db, err := sql.Open("mysql", mysqluri)
-	// if err != nil {
-	// 	log.Infof("数据库连接失败，请检查配置")
-	// 	return map[string]interface{}{}, nil
-	// }
-	// defer db.Close()
-	// if err = db.Ping(); err != nil {
-	// 	log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
-	// 	return map[string]interface{}{}, nil
-	// }
 	if currentNode.Config["mysqlConfigFail"].(bool) {
-		rebuildMysqlConnection(currentNode)
+		err := rebuildMysqlConnection(currentNode)
+		if err != nil {
+			return map[string]interface{}{}, nil
+		}
 	}
 	db := currentNode.Config["mysqlDB"].(*sql.DB)
 	tableCols := make([]mysqlDataCol, 0)
@@ -225,17 +211,23 @@ func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]in
 	}
 	rows, err := db.Query(tableQueryStr)
 	if err != nil {
-		log.Infof("数据表检索失败")
+		log.Errorf("Mysql读取组件(%s)数据表检索失败: %s", currentNode.Id, err.Error())
+		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
+		currentNode.Config["mysqlConfigFail"] = true
 		return map[string]interface{}{}, nil
 	}
 	columnNames, err := rows.Columns()
 	if err != nil {
-		log.Info("查询数据表结构失败")
+		log.Errorf("Mysql读取组件(%s)查询数据表结构失败: %s", currentNode.Id, err.Error())
+		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
+		currentNode.Config["mysqlConfigFail"] = true
 		return map[string]interface{}{}, nil
 	}
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
-		log.Info("查询数据表类型失败")
+		log.Errorf("Mysql读取组件(%s)查询数据表类型失败: %s", currentNode.Id, err.Error())
+		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
+		currentNode.Config["mysqlConfigFail"] = true
 		return map[string]interface{}{}, nil
 	}
 	for i, col := range columnNames {
@@ -267,7 +259,9 @@ func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]in
 		}
 		err = rows.Scan(recordP...)
 		if err != nil {
-			log.Infof("数据表数据检索失败")
+			log.Errorf("Mysql读取组件(%s)数据表数据检索失败: %s", currentNode.Id, err.Error())
+			log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
+			currentNode.Config["mysqlConfigFail"] = true
 			return map[string]interface{}{}, nil
 		}
 		data := make([]string, 0)
@@ -297,34 +291,24 @@ func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]in
 		recordNum += 1
 		records = append(records, data)
 	}
-	go func() {
-		checkMysqlConnection(currentNode)
-	}()
 
 	return map[string]interface{}{"out1": records}, nil
 }
 
 func mysqlExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	// mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
-
-	// db, err := sql.Open("mysql", mysqluri)
-	// if err != nil {
-	// 	log.Infof("数据库连接失败，请检查配置")
-	// 	return map[string]interface{}{}, nil
-	// }
-	// defer db.Close()
-	// if err = db.Ping(); err != nil {
-	// 	log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
-	// 	return map[string]interface{}{}, nil
-	// }
 	if currentNode.Config["mysqlConfigFail"].(bool) {
-		rebuildMysqlConnection(currentNode)
+		err := rebuildMysqlConnection(currentNode)
+		if err != nil {
+			return map[string]interface{}{}, nil
+		}
 	}
 	db := currentNode.Config["mysqlDB"].(*sql.DB)
 	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	_, err := db.Exec(tableQueryStr)
 	if err != nil {
-		log.Infof("数据表执行sql语句失败")
+		log.Errorf("Mysql执行组件(%s)数据表执行sql语句失败: %s", currentNode.Id, err.Error())
+		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
+		currentNode.Config["mysqlConfigFail"] = true
 		return map[string]interface{}{}, nil
 	}
 	return map[string]interface{}{"out1": "success"}, nil
@@ -339,30 +323,29 @@ func mysqlWriterMain(currentNode Node, inputData RequestData) (map[string]interf
 		os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
 		storageErr := storage.FGetObject(tmpKey, tmpPath)
 		if storageErr != nil {
-			log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
+			log.Errorf("Mysql写入组件(%s)无法下载文件: %s, 报错信息为: %s", currentNode.Id, tmpKey, storageErr.Error())
+			log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 			return map[string]interface{}{}, nil
 		}
 	}
 	csvFile, err := os.Open(tmpPath)
 	if err != nil {
-		log.Errorf("Can not open csv file: %s, with error: %s", tmpPath, err.Error())
+		log.Errorf("Mysql写入组件(%s)无法打开文件: %s, 报错信息为: %s", currentNode.Id, tmpPath, err.Error())
+		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 		return map[string]interface{}{}, nil
 	}
 	defer func() {
 		csvFile.Close()
 		err = os.Remove(tmpPath)
 		if err != nil {
-			log.Errorf("Can not remove csv file: %s, with error: %s", tmpPath, err.Error())
+			log.Errorf("Mysql写入组件(%s)无法删除临时文件: %s, 报错信息为: %s", currentNode.Id, tmpPath, err.Error())
 		}
 	}()
 	csvToSqlErr := ReadCsvToMySql(csvFile, currentNode)
 	if csvToSqlErr != nil {
-		log.Error("未能正常写入数据库")
+		log.Errorf("Mysql写入组件(%s)未能正常写入数据库: %s", currentNode.Id, csvToSqlErr.Error())
 		return map[string]interface{}{}, nil
 	}
-	go func() {
-		checkMysqlConnection(currentNode)
-	}()
 	return map[string]interface{}{"out1": "success"}, nil
 }
 
@@ -372,20 +355,12 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 	if err != nil {
 		return err
 	}
-	//链接数据库
-	// mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
-	// db, err := sql.Open("mysql", mysqluri)
-	// if err != nil {
-	// 	log.Infof("数据库连接失败，请检查配置")
-	// 	return err
-	// }
-	// defer db.Close()
-	// if err = db.Ping(); err != nil {
-	// 	log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
-	// 	return err
-	// }
+
 	if currentNode.Config["mysqlConfigFail"].(bool) {
-		rebuildMysqlConnection(currentNode)
+		err := rebuildMysqlConnection(currentNode)
+		if err != nil {
+			return err
+		}
 	}
 	db := currentNode.Config["mysqlDB"].(*sql.DB)
 
@@ -396,7 +371,6 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 	mode := currentNode.Config["mode"].(string)
 	chunksize, err := strconv.Atoi(chunksizeRaw)
 	if err != nil {
-		log.Infof("chunksize设置非数值")
 		return err
 	}
 
@@ -413,12 +387,10 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s", tablename)
 		_, err := db.Exec(tableDropStr)
 		if err != nil {
-			log.Infof("删除原表失败")
 			return err
 		}
 		_, err = db.Exec(tableCreateStr)
 		if err != nil {
-			log.Infof("创建表失败")
 			return err
 		}
 		//插入数据
@@ -463,7 +435,6 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s;", tablename, strings.Join(tableColumns, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("覆盖写入表失败")
 					return err
 				}
 			}
@@ -473,7 +444,6 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 		tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, dbname)
 		colRows, err := db.Query(tableColumnStr)
 		if err != nil {
-			log.Infof("数据表检索失败, 请确认要写入的表是否存在")
 			return err
 		}
 		tableCols := make([]mysqlDataCol, 0)
@@ -482,13 +452,12 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 			var tableCol mysqlDataCol
 			err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
 				return err
 			}
 			tableCols = append(tableCols, tableCol)
 		}
 		if len(tableCols) == 0 {
-			log.Infof("数据表检索失败, 开始自动创建数据表")
+			log.Debug("数据表检索失败, 开始自动创建数据表")
 			//新建表
 			columns := records[0]
 			tableSchemaArr := make([]string, 0)
@@ -501,18 +470,15 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s", tablename)
 			_, err := db.Exec(tableDropStr)
 			if err != nil {
-				log.Infof("删除原表失败")
 				return err
 			}
 			_, err = db.Exec(tableCreateStr)
 			if err != nil {
-				log.Infof("创建表失败")
 				return err
 			}
 			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, dbname)
 			colRows, err := db.Query(tableColumnStr)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
 				return err
 			}
 			defer colRows.Close()
@@ -520,7 +486,6 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 				var tableCol mysqlDataCol
 				err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 				if err != nil {
-					log.Infof("数据表检索失败, 请确认要写入的表是否存在")
 					return err
 				}
 				tableCols = append(tableCols, tableCol)
@@ -545,11 +510,10 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 			headerToRecords[header] = colIdx
 		}
 		if strings.Compare(mode, "clearAndAppend") == 0 {
-			log.Infof("开始清空并追加")
+			log.Debug("开始清空并追加")
 			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s", tablename)
 			_, err := db.Exec(tableClearStr)
 			if err != nil {
-				log.Infof("清空表失败")
 				return err
 			}
 		}
@@ -607,7 +571,6 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s;", tablename, strings.Join(headers, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("追加写入表失败：%s", err.Error())
 					return err
 				}
 			}

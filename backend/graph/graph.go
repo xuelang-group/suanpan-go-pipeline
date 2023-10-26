@@ -180,6 +180,9 @@ func (g *Graph) Update(newGraph utils.GraphConfig) {
 	os.MkdirAll(filepath.Dir(g.path), os.ModePerm)
 	os.WriteFile(g.path, dataJson, 0644)
 	storage.FPutObject(g.key, g.path)
+	for node := range g.Nodes {
+		g.Nodes[node].Release()
+	}
 	g.Nodes = []components.Node{}
 	g.nodesInit()
 }

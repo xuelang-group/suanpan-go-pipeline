@@ -35,6 +35,7 @@ type Node struct {
 	loadInput   func(currentNode Node, inputData RequestData) error
 	main        func(currentNode Node, inputData RequestData) (map[string]interface{}, error)
 	initNode    func(currentNode Node) error
+	releaseNode func(currentNode Node) error
 	Status      int // 0: stoped 1： running -1：error
 	// ServiceHandler services.Service
 }
@@ -116,19 +117,26 @@ func (c *Node) Init(nodeType string) {
 	case "MysqlReader":
 		c.main = mysqlReaderMain
 		c.initNode = mysqlInit
+		c.releaseNode = mysqlRlease
 	case "MysqlExecutor":
 		c.main = mysqlExecutorMain
 		c.initNode = mysqlInit
+		c.releaseNode = mysqlRlease
 	case "MysqlWriter":
 		c.main = mysqlWriterMain
 		c.initNode = mysqlInit
+		c.releaseNode = mysqlRlease
 	case "MysqlJsonReader":
 		c.main = mysqlJsonReaderMain
 		c.initNode = mysqlInit
-		// c.ServiceHandler = &services.KafkaService{Key: c.Key, Id: c.Id, Address: c.Config["address"].(string), Topic: c.Config["topic"].(string), Partition: c.Config["partition"].(int), IsDeploy: false, StopChan: make(chan bool)}
+		c.releaseNode = mysqlRlease
 	default:
 	}
 	c.initNode(*c)
+}
+
+func (c *Node) Release() {
+	c.releaseNode(*c)
 }
 
 func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server) {
