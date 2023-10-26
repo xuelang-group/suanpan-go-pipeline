@@ -24,7 +24,7 @@ func main() {
 		scanner := bufio.NewScanner(pyStdout)
 		for scanner.Scan() {
 			m := scanner.Text()
-			log.Infof("Python脚本编辑器消息：%s", m)
+			log.Debugf("Python脚本编辑器消息：%s", m)
 		}
 	}()
 
