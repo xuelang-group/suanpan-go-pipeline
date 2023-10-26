@@ -2,7 +2,6 @@ package components
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -19,11 +18,6 @@ type scriptData struct {
 
 func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	inputdata := getScriptInputData(currentNode)
-	// inputsStringArr := make([]string, 0)
-	// for _, inputString := range inputStrings {
-	// 	inputsStringArr = append(inputsStringArr, inputString)
-	// }
-	// var inputdata = strings.Join(inputsStringArr, ",")
 	var script = currentNode.Config["script"].(string)
 	var nodeid = currentNode.Id
 	params := url.Values{}
@@ -39,24 +33,15 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	//如果参数中有中文参数,这个方法会进行URLEncode
 	Url.RawQuery = params.Encode()
 	urlPath := Url.String()
-	fmt.Println(urlPath)
+	log.Debugf("Python脚本编辑器(%s)调用python服务API: %s", currentNode.Id, urlPath)
 	resp, err := http.Get(urlPath)
+	if err != nil {
+		log.Infof("Python脚本编辑器(%s)调用python服务API报错: %s", currentNode.Id, err.Error())
+		return map[string]interface{}{}, nil
+	}
 	defer resp.Body.Close()
 	stdout, err := io.ReadAll(resp.Body)
-	fmt.Println(string(stdout))
-	// cmdStrings := make([]string, 0)
-	// cmdStrings = append(cmdStrings, "scripts/pyRuntime.py")
-	// for _, inputString := range inputStrings {
-	//         cmdStrings = append(cmdStrings, inputString)
-	// }
-	// cmdStrings = append(cmdStrings, "--script")
-	// cmdStrings = append(cmdStrings, currentNode.Config["script"].(string))
-	// cmd := exec.Command("python3", cmdStrings...)
-	// stdout, err := cmd.Output()
-	// if err != nil {
-	//         log.Infof("can not run script with error: %s", err.Error())
-	//         return map[string]interface{}{}, nil
-	// }
+	log.Debugf("Python脚本编辑器(%s)调用python服务API返回: %s", currentNode.Id, string(stdout))
 	outs := []scriptData{}
 	err1 := json.Unmarshal(stdout, &outs)
 	if err1 != nil {
@@ -86,7 +71,6 @@ func getScriptInputData(currentNode Node) string {
 			inputData.Data = i
 			inputData.Type = "json"
 		}
-		// inputString, _ := json.Marshal(inputData)
 		inputDatas = append(inputDatas, inputData)
 	}
 	inputString, _ := json.Marshal(inputDatas)

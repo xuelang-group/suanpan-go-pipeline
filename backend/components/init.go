@@ -48,6 +48,7 @@ type RequestData struct {
 func (c *Node) Init(nodeType string) {
 	c.Run = Run
 	c.UpdateInput = UpdateInput
+	c.initNode = defaultInit
 	// c.dumpOutput = dumpOutput
 	switch nodeType {
 	case "StreamIn":
@@ -114,15 +115,20 @@ func (c *Node) Init(nodeType string) {
 		c.main = kafkaProducerMain
 	case "MysqlReader":
 		c.main = mysqlReaderMain
+		c.initNode = mysqlInit
 	case "MysqlExecutor":
 		c.main = mysqlExecutorMain
+		c.initNode = mysqlInit
 	case "MysqlWriter":
 		c.main = mysqlWriterMain
+		c.initNode = mysqlInit
 	case "MysqlJsonReader":
 		c.main = mysqlJsonReaderMain
+		c.initNode = mysqlInit
 		// c.ServiceHandler = &services.KafkaService{Key: c.Key, Id: c.Id, Address: c.Config["address"].(string), Topic: c.Config["topic"].(string), Partition: c.Config["partition"].(int), IsDeploy: false, StopChan: make(chan bool)}
 	default:
 	}
+	c.initNode(*c)
 }
 
 func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server) {
@@ -242,4 +248,8 @@ func loadParameter(parameter string, vars map[string]interface{}) string {
 	}
 	paramT.Execute(&result, vars)
 	return result.String()
+}
+
+func defaultInit(currentNode Node) error {
+	return nil
 }

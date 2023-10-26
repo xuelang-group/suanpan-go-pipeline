@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
@@ -74,13 +75,6 @@ func (g *Graph) nodesInit() {
 	for _, nodeConfig := range g.Config.Nodes {
 
 		node := components.Node{Id: nodeConfig.Uuid, Key: nodeConfig.Key}
-		if strings.HasPrefix(node.Key, "in") {
-			node.Init("StreamIn")
-		} else if strings.HasPrefix(node.Key, "out") {
-			node.Init("StreamOut")
-		} else {
-			node.Init(nodeConfig.Key)
-		}
 
 		params := make(map[string]interface{})
 		for _, param := range nodeConfig.Parameters {
@@ -97,6 +91,7 @@ func (g *Graph) nodesInit() {
 			params["subtype"] = subtype
 		}
 		node.Config = params
+
 		node.InputData = make(map[string]interface{})
 		node.OutputData = make(map[string]interface{})
 		supportPortConfig := []string{"ExecutePythonScript", "DataSync", "Delay"}
@@ -127,6 +122,13 @@ func (g *Graph) nodesInit() {
 					}
 				}
 			}
+		}
+		if strings.HasPrefix(node.Key, "in") {
+			node.Init("StreamIn")
+		} else if strings.HasPrefix(node.Key, "out") {
+			node.Init("StreamOut")
+		} else {
+			node.Init(nodeConfig.Key)
 		}
 		g.Nodes = append(g.Nodes, node)
 	}
@@ -184,6 +186,7 @@ func (g *Graph) Update(newGraph utils.GraphConfig) {
 
 func (g *Graph) Run(inputData map[string]string, id string, extra string, server *socketio.Server, useCache bool) {
 	log.Info("流程图开始运行")
+	start := time.Now()
 	g.PipelineStatus = 1
 	g.wg = sync.WaitGroup{}
 	g.stopChan = make(chan bool)
@@ -213,7 +216,8 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 	g.wg.Wait()
 	g.PipelineStatus = 0
 	close(g.stopChan)
-	log.Info("流程图运行结束")
+	cost := time.Since(start)
+	log.Infof("流程图运行结束, 耗时: %dms", cost.Milliseconds())
 }
 
 func (g *Graph) UpdateInputs(inputData map[string]string, id string, extra string) {

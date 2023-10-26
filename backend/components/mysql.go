@@ -32,20 +32,68 @@ func mysqlInit(currentNode Node) error {
 		"time with time zone": "time.Time", "timestamp without time zone": "time.Time",
 		"timestamp with time zone": "time.Time", "double precision": "float64", "numeric": "float64"}
 	currentNode.Config["mysqlDataType"] = mysqlDataType
-	return nil
-}
-func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
 	db, err := sql.Open("mysql", mysqluri)
 	if err != nil {
-		log.Infof("数据库连接失败，请检查配置")
-		return map[string]interface{}{}, nil
+		log.Infof("数据库连接失败，请检查配置: %s", err.Error())
+		currentNode.Config["mysqlConfigFail"] = true
+	} else {
+		currentNode.Config["mysqlConfigFail"] = false
 	}
-	defer db.Close()
 	if err = db.Ping(); err != nil {
 		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
-		return map[string]interface{}{}, nil
+		currentNode.Config["mysqlConfigFail"] = true
 	}
+	currentNode.Config["mysqlDB"] = db
+	return nil
+}
+
+func rebuildMysqlConnection(currentNode Node) error {
+	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
+	db, err := sql.Open("mysql", mysqluri)
+	if err != nil {
+		log.Infof("数据库连接失败，请检查配置: %s", err.Error())
+		currentNode.Config["mysqlConfigFail"] = true
+	} else {
+		currentNode.Config["mysqlConfigFail"] = false
+	}
+	if err = db.Ping(); err != nil {
+		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+		currentNode.Config["mysqlConfigFail"] = true
+	}
+	currentNode.Config["mysqlDB"] = db
+	return nil
+}
+
+func checkMysqlConnection(currentNode Node) error {
+	if currentNode.Config["mysqlConfigFail"].(bool) {
+		rebuildMysqlConnection(currentNode)
+		return nil
+	}
+	db := currentNode.Config["mysqlDB"].(*sql.DB)
+	if err := db.Ping(); err != nil {
+		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+		currentNode.Config["mysqlConfigFail"] = true
+	}
+	return nil
+}
+
+func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
+	// mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
+	// db, err := sql.Open("mysql", mysqluri)
+	// if err != nil {
+	// 	log.Infof("数据库连接失败，请检查配置")
+	// 	return map[string]interface{}{}, nil
+	// }
+	// defer db.Close()
+	// if err = db.Ping(); err != nil {
+	// 	log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+	// 	return map[string]interface{}{}, nil
+	// }
+	if currentNode.Config["mysqlConfigFail"].(bool) {
+		rebuildMysqlConnection(currentNode)
+	}
+	db := currentNode.Config["mysqlDB"].(*sql.DB)
 	tableCols := make([]mysqlDataCol, 0)
 	tableQueryStr := ""
 	if len(currentNode.Config["sql"].(string)) == 0 {
@@ -144,21 +192,29 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 		return map[string]interface{}{}, nil
 	}
 
+	go func() {
+		checkMysqlConnection(currentNode)
+	}()
+
 	return map[string]interface{}{"out1": tmpPath}, nil
 }
 
 func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
-	db, err := sql.Open("mysql", mysqluri)
-	if err != nil {
-		log.Infof("数据库连接失败，请检查配置")
-		return map[string]interface{}{}, nil
+	// mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
+	// db, err := sql.Open("mysql", mysqluri)
+	// if err != nil {
+	// 	log.Infof("数据库连接失败，请检查配置")
+	// 	return map[string]interface{}{}, nil
+	// }
+	// defer db.Close()
+	// if err = db.Ping(); err != nil {
+	// 	log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+	// 	return map[string]interface{}{}, nil
+	// }
+	if currentNode.Config["mysqlConfigFail"].(bool) {
+		rebuildMysqlConnection(currentNode)
 	}
-	defer db.Close()
-	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
-		return map[string]interface{}{}, nil
-	}
+	db := currentNode.Config["mysqlDB"].(*sql.DB)
 	tableCols := make([]mysqlDataCol, 0)
 	tableQueryStr := ""
 	if len(currentNode.Config["sql"].(string)) == 0 {
@@ -241,25 +297,32 @@ func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]in
 		recordNum += 1
 		records = append(records, data)
 	}
+	go func() {
+		checkMysqlConnection(currentNode)
+	}()
 
 	return map[string]interface{}{"out1": records}, nil
 }
 
 func mysqlExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
+	// mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
 
-	db, err := sql.Open("mysql", mysqluri)
-	if err != nil {
-		log.Infof("数据库连接失败，请检查配置")
-		return map[string]interface{}{}, nil
+	// db, err := sql.Open("mysql", mysqluri)
+	// if err != nil {
+	// 	log.Infof("数据库连接失败，请检查配置")
+	// 	return map[string]interface{}{}, nil
+	// }
+	// defer db.Close()
+	// if err = db.Ping(); err != nil {
+	// 	log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+	// 	return map[string]interface{}{}, nil
+	// }
+	if currentNode.Config["mysqlConfigFail"].(bool) {
+		rebuildMysqlConnection(currentNode)
 	}
-	defer db.Close()
-	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
-		return map[string]interface{}{}, nil
-	}
+	db := currentNode.Config["mysqlDB"].(*sql.DB)
 	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
-	_, err = db.Exec(tableQueryStr)
+	_, err := db.Exec(tableQueryStr)
 	if err != nil {
 		log.Infof("数据表执行sql语句失败")
 		return map[string]interface{}{}, nil
@@ -297,6 +360,9 @@ func mysqlWriterMain(currentNode Node, inputData RequestData) (map[string]interf
 		log.Error("未能正常写入数据库")
 		return map[string]interface{}{}, nil
 	}
+	go func() {
+		checkMysqlConnection(currentNode)
+	}()
 	return map[string]interface{}{"out1": "success"}, nil
 }
 
@@ -307,17 +373,21 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 		return err
 	}
 	//链接数据库
-	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
-	db, err := sql.Open("mysql", mysqluri)
-	if err != nil {
-		log.Infof("数据库连接失败，请检查配置")
-		return err
+	// mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
+	// db, err := sql.Open("mysql", mysqluri)
+	// if err != nil {
+	// 	log.Infof("数据库连接失败，请检查配置")
+	// 	return err
+	// }
+	// defer db.Close()
+	// if err = db.Ping(); err != nil {
+	// 	log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+	// 	return err
+	// }
+	if currentNode.Config["mysqlConfigFail"].(bool) {
+		rebuildMysqlConnection(currentNode)
 	}
-	defer db.Close()
-	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
-		return err
-	}
+	db := currentNode.Config["mysqlDB"].(*sql.DB)
 
 	tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
 	dbname := currentNode.Config["dbname"].(string)
