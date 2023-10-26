@@ -152,14 +152,14 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 			currentNode.Status = 1
 			outputData, err := currentNode.main(currentNode, inputData)
 			if err != nil {
-				log.Infof("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
+				log.Errorf("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
 				currentNode.Status = -1
 				if server != nil {
 					server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: -1})
 					server.BroadcastToNamespace("/", "notify.process.error", map[string]string{currentNode.Id: err.Error()})
 				}
 			} else {
-				log.Infof("节点%s(%s)运行成功", currentNode.Key, currentNode.Id)
+				log.Debugf("节点%s(%s)运行成功", currentNode.Key, currentNode.Id)
 				readyToRun := make([]string, 0)
 				triggeredPorts := make(map[string][]string)
 				for port, data := range outputData { //map[out1:true]
@@ -167,7 +167,7 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 						tgtInfo := strings.Split(tgt, "-")
 						for i := range currentNode.NextNodes {
 							if currentNode.NextNodes[i].Id == tgtInfo[0] {
-								log.Infof("数据下发到节点%s(%s)", currentNode.NextNodes[i].Key, currentNode.NextNodes[i].Id)
+								log.Debugf("数据下发到节点%s(%s)", currentNode.NextNodes[i].Key, currentNode.NextNodes[i].Id)
 								tmpData := data
 								if dataString, ok := tmpData.(string); ok {
 									if strings.HasSuffix(dataString, "data.csv") {
@@ -217,7 +217,7 @@ func UpdateInput(currentNode Node, inputData RequestData, wg *sync.WaitGroup, st
 	default:
 		err := currentNode.loadInput(currentNode, inputData)
 		if err != nil {
-			log.Infof("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
+			log.Errorf("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
 		}
 	}
 }
@@ -239,7 +239,7 @@ func loadParameter(parameter string, vars map[string]interface{}) string {
 	paramT := template.New("parameterLoader")
 	paramT, err := paramT.Parse(parameter)
 	if err != nil {
-		log.Infof("无法正常载入参数：%s", parameter)
+		log.Errorf("无法正常载入参数：%s", parameter)
 		return parameter
 	}
 	var result bytes.Buffer
