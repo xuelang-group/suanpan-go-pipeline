@@ -32,6 +32,7 @@ type Graph struct {
 	NodeInfo   utils.NodeInfo
 	stopChan   chan bool
 	wg         sync.WaitGroup
+	runtimeErr error
 	path       string
 	key        string
 }
@@ -199,8 +200,9 @@ func (g *Graph) Initialize() {
 	}
 }
 
-func (g *Graph) Run(inputData map[string]string, id string, extra string, server *socketio.Server, useCache bool) {
+func (g *Graph) Run(inputData map[string]string, id string, extra string, server *socketio.Server, useCache bool) error {
 	log.Info("流程图开始运行")
+	g.runtimeErr = nil
 	start := time.Now()
 	g.PipelineStatus = 1
 	g.wg = sync.WaitGroup{}
@@ -233,6 +235,7 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 	close(g.stopChan)
 	cost := time.Since(start)
 	log.Infof("流程图运行结束, 耗时: %dms", cost.Milliseconds())
+	return g.runtimeErr
 }
 
 func (g *Graph) UpdateInputs(inputData map[string]string, id string, extra string) {

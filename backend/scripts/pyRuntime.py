@@ -13,7 +13,7 @@ def customwarn(message, category, filename, lineno, file=None, line=None):
 warnings.showwarning = customwarn
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 app = FastAPI()
 
@@ -136,6 +136,7 @@ def run(nodeid=None, inputs=None, script=""):
         # input = json.loads(eval("'{}'".format(input)))
         loadedInputs.append(loadMethods[input["type"]](input["data"]))
     dumpedOutputs = []
+    err = ""
     try:
         outputs = runScript(loadedInputs)
         idx = 1
@@ -161,7 +162,8 @@ def run(nodeid=None, inputs=None, script=""):
     except:
         # print("type of outputs is not supported.")
         print(traceback.format_exc(), file=sys.stderr)
-    return dumpedOutputs
+        err = traceback.format_exc()
+    return dumpedOutputs, err
 
 
 @app.get("/data/")
@@ -170,8 +172,11 @@ async def getInputdata(nodeid, inputdata, script):
     # if len(tmp) > 1:
     #     for i in range(len(tmp) - 1):
     #         tmp[i] = tmp[i] + "}"
-    result = run(nodeid, inputs, script)
-    return result
+    result, err = run(nodeid, inputs, script)
+    if len(err) == 0:
+        return result
+    else:
+        raise HTTPException(status_code=400, detail=err)
 
 
 LOGGING_CONFIG = {

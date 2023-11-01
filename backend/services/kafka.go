@@ -63,16 +63,48 @@ func (h *KafkaService) Deploy(g *graph.Graph) {
 
 	log.Infof("节点%s(%s)开始消费 address:%s groupid: %s 中的消息", h.Key, h.Id, kafkaURL, groupId)
 	for {
-		m, err := h.kafkaReader.ReadMessage(context.Background())
+		// m, err := h.kafkaReader.ReadMessage(context.Background())
+		m, err := h.kafkaReader.FetchMessage(context.Background())
 		if err != nil {
 			log.Errorf("读取Kafka消息失败: %s", err)
 			break
 		}
+		success := false
 		inputData := map[string]string{h.Id: string(m.Value)}
 		id := util.GenerateUUID()
 		extra := ""
-		g.Run(inputData, id, extra, nil, false)
-		log.Infof("在 topic:%v partition:%v offset:%v 中的消息 %s = %s 消费成功", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value))
+		workflowErr := g.Run(inputData, id, extra, nil, false)
+		if workflowErr == nil {
+			commitErr := h.kafkaReader.CommitMessages(context.Background(), m)
+			if commitErr != nil {
+				log.Errorf("提交Kafka消息失败: %s", err)
+			} else {
+				success = true
+				log.Infof("在 topic:%v partition:%v offset:%v 中的消息 %s = %s 消费成功", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value))
+			}
+		} else {
+			for i := 0; i < 1; i++ {
+				log.Infof("再次尝试消费消息 %s = %s ", string(m.Key), string(m.Value))
+				inputData := map[string]string{h.Id: string(m.Value)}
+				id := util.GenerateUUID()
+				extra := ""
+				workflowErr := g.Run(inputData, id, extra, nil, false)
+				if workflowErr == nil {
+					commitErr := h.kafkaReader.CommitMessages(context.Background(), m)
+					if commitErr != nil {
+						log.Errorf("提交Kafka消息失败: %s", err)
+					} else {
+						success = true
+						log.Infof("在 topic:%v partition:%v offset:%v 中的消息 %s = %s 消费成功", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value))
+						break
+					}
+				}
+			}
+		}
+		if !success {
+			log.Infof("在 topic:%v partition:%v offset:%v 中的消息 %s = %s 消费失败，消息订阅程序终止", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value))
+			break
+		}
 	}
 	log.Infof("节点%s(%s)停止消费 address:%s groupid: %s 中的消息", h.Key, h.Id, kafkaURL, groupId)
 	// graph.GraphInst.Run(currentNode.NextNodes[0], inputData)

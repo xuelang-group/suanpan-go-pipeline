@@ -29,7 +29,7 @@ type Node struct {
 	Config         map[string]interface{}
 	Id             string
 	Key            string
-	Run            func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server)
+	Run            func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server, runtimeErr error)
 	// dumpOutput    func(currentNode Node, outputData map[string]interface{})
 	UpdateInput func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
 	loadInput   func(currentNode Node, inputData RequestData) error
@@ -143,7 +143,7 @@ func (c *Node) Release() {
 	c.releaseNode(*c)
 }
 
-func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server) {
+func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server, runtimeErr error) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("节点%s(%s)运行异常，错误日志：%s", currentNode.Key, currentNode.Id, err)
@@ -164,7 +164,8 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 			currentNode.Status = 1
 			outputData, err := currentNode.main(currentNode, inputData)
 			if err != nil {
-				log.Errorf("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
+				runtimeErr = err
+				log.Debugf("节点%s(%s)运行失败: %s", currentNode.Key, currentNode.Id, err.Error())
 				currentNode.Status = -1
 				if server != nil {
 					server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: -1})
@@ -209,7 +210,7 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 					if utils.SlicesContain(readyToRun, currentNode.NextNodes[i].Id) {
 						currentNode.NextNodes[i].TriggeredPorts = triggeredPorts[currentNode.NextNodes[i].Id]
 						wg.Add(1)
-						go currentNode.NextNodes[i].Run(*currentNode.NextNodes[i], RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server)
+						go currentNode.NextNodes[i].Run(*currentNode.NextNodes[i], RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server, runtimeErr)
 					}
 				}
 				currentNode.Status = 0

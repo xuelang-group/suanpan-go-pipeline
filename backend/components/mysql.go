@@ -100,7 +100,7 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 	if currentNode.Config["mysqlConfigFail"].(bool) {
 		err := rebuildMysqlConnection(currentNode)
 		if err != nil {
-			return map[string]interface{}{}, nil
+			return map[string]interface{}{}, err
 		}
 	}
 	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
@@ -119,21 +119,21 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 		log.Errorf("Mysql读取组件(%s)数据表检索失败: %s", currentNode.Id, err.Error())
 		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 		currentNode.Config["mysqlConfigFail"] = true
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 	columnNames, err := rows.Columns()
 	if err != nil {
 		log.Errorf("Mysql读取组件(%s)查询数据表结构失败: %s", currentNode.Id, err.Error())
 		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 		currentNode.Config["mysqlConfigFail"] = true
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
 		log.Errorf("Mysql读取组件(%s)查询数据表类型失败: %s", currentNode.Id, err.Error())
 		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 		currentNode.Config["mysqlConfigFail"] = true
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 	for i, col := range columnNames {
 		tableCol := mysqlDataCol{Name: col, Type: columnTypes[i].DatabaseTypeName()}
@@ -167,7 +167,7 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 			log.Errorf("Mysql读取组件(%s)数据表数据检索失败: %s", currentNode.Id, err.Error())
 			log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 			currentNode.Config["mysqlConfigFail"] = true
-			return map[string]interface{}{}, nil
+			return map[string]interface{}{}, err
 		}
 		data := make([]string, 0)
 		data = append(data, strconv.FormatInt(int64(recordNum), 10))
@@ -203,7 +203,7 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 	if err != nil {
 		log.Errorf("Mysql读取组件(%s)无法创建临时文件: %s", currentNode.Id, err.Error())
 		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 	defer file.Close()
 	w := csv.NewWriter(file)
@@ -211,7 +211,7 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 	if err != nil {
 		log.Errorf("Mysql读取组件(%s)无法写入csv数据: %s", currentNode.Id, err.Error())
 		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 
 	return map[string]interface{}{"out1": tmpPath}, nil
@@ -221,7 +221,7 @@ func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]in
 	if currentNode.Config["mysqlConfigFail"].(bool) {
 		err := rebuildMysqlConnection(currentNode)
 		if err != nil {
-			return map[string]interface{}{}, nil
+			return map[string]interface{}{}, err
 		}
 	}
 	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
@@ -240,21 +240,21 @@ func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]in
 		log.Errorf("Mysql读取组件(%s)数据表检索失败: %s", currentNode.Id, err.Error())
 		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 		currentNode.Config["mysqlConfigFail"] = true
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 	columnNames, err := rows.Columns()
 	if err != nil {
 		log.Errorf("Mysql读取组件(%s)查询数据表结构失败: %s", currentNode.Id, err.Error())
 		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 		currentNode.Config["mysqlConfigFail"] = true
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
 		log.Errorf("Mysql读取组件(%s)查询数据表类型失败: %s", currentNode.Id, err.Error())
 		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 		currentNode.Config["mysqlConfigFail"] = true
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 	for i, col := range columnNames {
 		tableCol := mysqlDataCol{Name: col, Type: columnTypes[i].DatabaseTypeName()}
@@ -288,7 +288,7 @@ func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]in
 			log.Errorf("Mysql读取组件(%s)数据表数据检索失败: %s", currentNode.Id, err.Error())
 			log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 			currentNode.Config["mysqlConfigFail"] = true
-			return map[string]interface{}{}, nil
+			return map[string]interface{}{}, err
 		}
 		data := make([]string, 0)
 		data = append(data, strconv.FormatInt(int64(recordNum), 10))
@@ -325,7 +325,7 @@ func mysqlExecutorMain(currentNode Node, inputData RequestData) (map[string]inte
 	if currentNode.Config["mysqlConfigFail"].(bool) {
 		err := rebuildMysqlConnection(currentNode)
 		if err != nil {
-			return map[string]interface{}{}, nil
+			return map[string]interface{}{}, err
 		}
 	}
 	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
@@ -337,7 +337,7 @@ func mysqlExecutorMain(currentNode Node, inputData RequestData) (map[string]inte
 		log.Errorf("Mysql执行组件(%s)数据表执行sql语句失败: %s", currentNode.Id, err.Error())
 		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
 		currentNode.Config["mysqlConfigFail"] = true
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 	return map[string]interface{}{"out1": "success"}, nil
 }
@@ -353,14 +353,14 @@ func mysqlWriterMain(currentNode Node, inputData RequestData) (map[string]interf
 		if storageErr != nil {
 			log.Errorf("Mysql写入组件(%s)无法下载文件: %s, 报错信息为: %s", currentNode.Id, tmpKey, storageErr.Error())
 			log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
-			return map[string]interface{}{}, nil
+			return map[string]interface{}{}, err
 		}
 	}
 	csvFile, err := os.Open(tmpPath)
 	if err != nil {
 		log.Errorf("Mysql写入组件(%s)无法打开文件: %s, 报错信息为: %s", currentNode.Id, tmpPath, err.Error())
 		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 	defer func() {
 		csvFile.Close()
@@ -372,7 +372,7 @@ func mysqlWriterMain(currentNode Node, inputData RequestData) (map[string]interf
 	csvToSqlErr := ReadCsvToMySql(csvFile, currentNode)
 	if csvToSqlErr != nil {
 		log.Errorf("Mysql写入组件(%s)未能正常写入数据库: %s", currentNode.Id, csvToSqlErr.Error())
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 	return map[string]interface{}{"out1": "success"}, nil
 }

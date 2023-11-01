@@ -26,7 +26,7 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	Url, err := url.Parse("http://0.0.0.0:8080/data/?nodeid=10112&inputdata=fdsf&script=scr")
 	if err != nil {
 		log.Errorf("can not run script with error: %s", err.Error())
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
 	}
 	params.Set("nodeid", nodeid)
 	params.Set("inputdata", inputdata)
@@ -38,7 +38,13 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	resp, err := http.Get(urlPath)
 	if err != nil {
 		log.Errorf("Python脚本编辑器(%s)调用python服务API报错: %s", currentNode.Id, err.Error())
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err
+	}
+	if resp.Status == "400" {
+		defer resp.Body.Close()
+		stdout, _ := io.ReadAll(resp.Body)
+		log.Errorf("Python脚本编辑器(%s)调用python服务API报错: %s", currentNode.Id, string(stdout))
+		return map[string]interface{}{}, err
 	}
 	defer resp.Body.Close()
 	stdout, err := io.ReadAll(resp.Body)
@@ -47,7 +53,7 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	err1 := json.Unmarshal(stdout, &outs)
 	if err1 != nil {
 		log.Errorf("Python脚本编辑器(%s)调用python服务API返回结果无法解析: %s", currentNode.Id, err.Error())
-		return map[string]interface{}{}, nil
+		return map[string]interface{}{}, err1
 	}
 	return getScriptOutputData(outs, currentNode), nil
 }
