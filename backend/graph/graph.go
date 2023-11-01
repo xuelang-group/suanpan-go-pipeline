@@ -212,20 +212,20 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 			if strings.HasPrefix(node.Key, "in") {
 				if data, ok := inputData[strings.Replace(node.Key, "inputData", "in", -1)]; ok {
 					g.wg.Add(1)
-					go node.Run(node, components.RequestData{Data: data, ID: id, Extra: extra}, &g.wg, g.stopChan, server)
+					go node.Run(node, components.RequestData{Data: data, ID: id, Extra: extra}, &g.wg, g.stopChan, server, &g.runtimeErr)
 				} else {
 					if useCache {
 						g.wg.Add(1)
-						go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
+						go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server, &g.runtimeErr)
 					}
 				}
 			} else if node.Key == "KafkaConsumer" {
 				g.wg.Add(1)
-				go node.Run(node, components.RequestData{Data: inputData[node.Id], ID: id, Extra: extra}, &g.wg, g.stopChan, server)
+				go node.Run(node, components.RequestData{Data: inputData[node.Id], ID: id, Extra: extra}, &g.wg, g.stopChan, server, &g.runtimeErr)
 			} else {
 				if len(node.InputData) == 0 {
 					g.wg.Add(1)
-					go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server)
+					go node.Run(node, components.RequestData{ID: id, Extra: extra}, &g.wg, g.stopChan, server, &g.runtimeErr)
 				}
 			}
 		}

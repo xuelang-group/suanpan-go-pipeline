@@ -2,6 +2,7 @@ package components
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -40,11 +41,11 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 		log.Errorf("Python脚本编辑器(%s)调用python服务API报错: %s", currentNode.Id, err.Error())
 		return map[string]interface{}{}, err
 	}
-	if resp.Status == "400" {
+	if resp.Status == "400 Bad Request" {
 		defer resp.Body.Close()
 		stdout, _ := io.ReadAll(resp.Body)
 		log.Errorf("Python脚本编辑器(%s)调用python服务API报错: %s", currentNode.Id, string(stdout))
-		return map[string]interface{}{}, err
+		return map[string]interface{}{}, errors.New(string(stdout))
 	}
 	defer resp.Body.Close()
 	stdout, err := io.ReadAll(resp.Body)

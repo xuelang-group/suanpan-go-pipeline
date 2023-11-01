@@ -29,7 +29,7 @@ type Node struct {
 	Config         map[string]interface{}
 	Id             string
 	Key            string
-	Run            func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server, runtimeErr error)
+	Run            func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server, runtimeErr *error)
 	// dumpOutput    func(currentNode Node, outputData map[string]interface{})
 	UpdateInput func(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool)
 	loadInput   func(currentNode Node, inputData RequestData) error
@@ -143,10 +143,11 @@ func (c *Node) Release() {
 	c.releaseNode(*c)
 }
 
-func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server, runtimeErr error) {
+func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan chan bool, server *socketio.Server, runtimeErr *error) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("节点%s(%s)运行异常，错误日志：%s", currentNode.Key, currentNode.Id, err)
+			*runtimeErr = err.(error)
 		}
 		wg.Done()
 	}()
@@ -164,7 +165,7 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 			currentNode.Status = 1
 			outputData, err := currentNode.main(currentNode, inputData)
 			if err != nil {
-				runtimeErr = err
+				*runtimeErr = err
 				log.Debugf("节点%s(%s)运行失败: %s", currentNode.Key, currentNode.Id, err.Error())
 				currentNode.Status = -1
 				if server != nil {
