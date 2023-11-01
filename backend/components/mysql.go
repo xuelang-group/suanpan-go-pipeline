@@ -38,7 +38,7 @@ func mysqlInit(currentNode Node) error {
 		"time with time zone": "time.Time", "timestamp without time zone": "time.Time",
 		"timestamp with time zone": "time.Time", "double precision": "float64", "numeric": "float64"}
 	currentNode.Config["mysqlDataType"] = mysqlDataType
-	currentNode.Config["mysqlDB"] = &mysqlDB{}
+	currentNode.Config["mysqlDB"] = &mysqlDB{l: new(sync.Mutex)}
 	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
 	go func() {
 		mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
