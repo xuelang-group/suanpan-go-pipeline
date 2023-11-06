@@ -32,6 +32,8 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	params.Set("nodeid", nodeid)
 	params.Set("inputdata", inputdata)
 	params.Set("script", script)
+	params.Set("messageid", inputData.ID)
+	params.Set("extra", inputData.Extra)
 	//如果参数中有中文参数,这个方法会进行URLEncode
 	Url.RawQuery = params.Encode()
 	urlPath := Url.String()

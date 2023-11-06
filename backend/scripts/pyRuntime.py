@@ -18,7 +18,7 @@ from fastapi import FastAPI, HTTPException
 app = FastAPI()
 
 functionSting = """
-def runScript(inputs):
+def runScript(inputs, messageid, extra):
     outputs = []
     %s
     return outputs
@@ -129,7 +129,7 @@ def delGlobalVar(name):
 #     return json.dumps(dumpedOutputs)
 
 
-def run(nodeid=None, inputs=None, script=""):
+def run(nodeid=None, inputs=None, script="", messageid="", extra=""):
     exec(functionSting % script.replace("\n", "\n    "), globals())
     loadedInputs = []
     for input in inputs:
@@ -138,7 +138,7 @@ def run(nodeid=None, inputs=None, script=""):
     dumpedOutputs = []
     err = ""
     try:
-        outputs = runScript(loadedInputs)
+        outputs = runScript(loadedInputs, messageid, extra)
         idx = 1
         for output in outputs:
             if type(output) in dumpMethods:
@@ -167,12 +167,12 @@ def run(nodeid=None, inputs=None, script=""):
 
 
 @app.get("/data/")
-async def getInputdata(nodeid, inputdata, script):
+async def getInputdata(nodeid, inputdata, script, messageid, extra):
     inputs = json.loads(inputdata)
     # if len(tmp) > 1:
     #     for i in range(len(tmp) - 1):
     #         tmp[i] = tmp[i] + "}"
-    result, err = run(nodeid, inputs, script)
+    result, err = run(nodeid, inputs, script, messageid, extra)
     if len(err) == 0:
         return result
     else:
