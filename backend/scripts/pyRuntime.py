@@ -89,7 +89,7 @@ typeMappings = {
 
 
 functionSting = """
-def runScript(inputs):
+def runScript(inputs, messageid, extra):
     outputs = []
     %s
     return outputs
