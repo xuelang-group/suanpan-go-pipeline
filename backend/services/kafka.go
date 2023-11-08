@@ -73,7 +73,9 @@ func (h *KafkaService) Deploy(g *graph.Graph) {
 		success := false
 		inputData := map[string]string{h.Id: string(m.Value)}
 		id := util.GenerateUUID()
-		extra := ""
+		extraData := map[string]interface{}{"topic": m.Topic, "partition": m.Partition, "offset": m.Offset, "key": string(m.Key)}
+		extraStr, _ := json.Marshal(extraData)
+		extra := string(extraStr)
 		workflowErr := g.Run(inputData, id, extra, nil, false)
 		if workflowErr == nil {
 			commitErr := h.kafkaReader.CommitMessages(context.Background(), m)
