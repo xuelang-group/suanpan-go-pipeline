@@ -47,7 +47,7 @@ func (g *Graph) Init(appType string, appMode string) {
 	g.componentsInit(appType)
 	g.graphInit()
 	g.nodesInit()
-	g.Initialize()
+	// g.Initialize()
 	variables.GlobalVariables = make(map[string]interface{})
 	if appMode != "edit" {
 		g.Status = 1
@@ -185,7 +185,7 @@ func (g *Graph) Update(newGraph utils.GraphConfig) {
 	g.Release()
 	g.Nodes = []components.Node{}
 	g.nodesInit()
-	g.Initialize()
+	// g.Initialize()
 }
 
 func (g *Graph) Release() {
