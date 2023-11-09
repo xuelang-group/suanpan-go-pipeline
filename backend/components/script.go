@@ -1,11 +1,11 @@
 package components
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"sort"
 
@@ -22,23 +22,35 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	inputdata := getScriptInputData(currentNode)
 	var script = currentNode.Config["script"].(string)
 	var nodeid = currentNode.Id
-	params := url.Values{}
+	// params := url.Values{}
 
-	Url, err := url.Parse("http://0.0.0.0:8080/data/?nodeid=10112&inputdata=fdsf&script=scr")
+	Url := "http://0.0.0.0:8080/data/"
+	// if err != nil {
+	// 	log.Errorf("can not run script with error: %s", err.Error())
+	// 	return map[string]interface{}{}, err
+	// }
+	// params.Set("nodeid", nodeid)
+	// params.Set("inputdata", inputdata)
+	// params.Set("script", script)
+	// params.Set("messageid", inputData.ID)
+	// params.Set("extra", inputData.Extra)
+	payloads := map[string]string{"nodeid": nodeid, "inputdata": inputdata, "script": script, "messageid": inputData.ID, "extra": inputData.Extra}
+	jsonStr, _ := json.Marshal(payloads)
+	// var jsonStr = []byte(`{"title":"Buy cheese and bread for breakfast."}`)
+	req, err := http.NewRequest("POST", Url, bytes.NewBuffer(jsonStr))
 	if err != nil {
-		log.Errorf("can not run script with error: %s", err.Error())
+		log.Errorf("Python脚本编辑器(%s)调用python服务API报错: %s", currentNode.Id, err.Error())
 		return map[string]interface{}{}, err
 	}
-	params.Set("nodeid", nodeid)
-	params.Set("inputdata", inputdata)
-	params.Set("script", script)
-	params.Set("messageid", inputData.ID)
-	params.Set("extra", inputData.Extra)
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	//如果参数中有中文参数,这个方法会进行URLEncode
-	Url.RawQuery = params.Encode()
-	urlPath := Url.String()
-	log.Debugf("Python脚本编辑器(%s)调用python服务API: %s", currentNode.Id, urlPath)
-	resp, err := http.Get(urlPath)
+	// Url.RawQuery = params.Encode()
+	// urlPath := Url.String()
+	log.Debugf("Python脚本编辑器(%s)调用python服务API: %s", currentNode.Id, Url)
+	log.Debugf("Python脚本编辑器(%s)调用python服务API参数: %s", currentNode.Id, string(jsonStr))
+	// resp, err := http.Post(urlPath)
 	if err != nil {
 		log.Errorf("Python脚本编辑器(%s)调用python服务API报错: %s", currentNode.Id, err.Error())
 		return map[string]interface{}{}, err

@@ -14,6 +14,7 @@ warnings.showwarning = customwarn
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -165,14 +166,20 @@ def run(nodeid=None, inputs=None, script="", messageid="", extra=""):
         err = traceback.format_exc()
     return dumpedOutputs, err
 
+class Data(BaseModel):
+    nodeid: str
+    inputdata: str
+    script: str
+    messageid: str
+    extra: str
 
-@app.get("/data/")
-async def getInputdata(nodeid, inputdata, script, messageid, extra):
-    inputs = json.loads(inputdata)
+@app.post("/data/")
+async def getInputdata(data: Data):
+    inputs = json.loads(data.inputdata)
     # if len(tmp) > 1:
     #     for i in range(len(tmp) - 1):
     #         tmp[i] = tmp[i] + "}"
-    result, err = run(nodeid, inputs, script, messageid, extra)
+    result, err = run(data.nodeid, inputs, data.script, data.messageid, data.extra)
     if len(err) == 0:
         return result
     else:
