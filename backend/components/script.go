@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"sort"
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -74,16 +73,16 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 }
 
 func getScriptInputData(currentNode Node) string {
-	inputDatas := make([]scriptData, 0)
-	inputPorts := make([]string, 0)
-	for port := range currentNode.InputData {
-		inputPorts = append(inputPorts, port)
-	}
-	sort.Slice(inputPorts, func(i, j int) bool {
-		return inputPorts[i] < inputPorts[j]
-	})
-	for _, port := range inputPorts {
-		v := currentNode.InputData[port]
+	inputDatas := map[string]scriptData{}
+	// inputPorts := make([]string, 0)
+	// for port := range currentNode.InputData {
+	// 	inputPorts = append(inputPorts, port)
+	// }
+	// sort.Slice(inputPorts, func(i, j int) bool {
+	// 	return inputPorts[i] < inputPorts[j]
+	// })
+	for port, v := range currentNode.InputData {
+		// v := currentNode.InputData[port]
 		inputData := scriptData{}
 		switch i := v.(type) {
 		case dataframe.DataFrame:
@@ -101,7 +100,8 @@ func getScriptInputData(currentNode Node) string {
 			inputData.Data = i
 			inputData.Type = "json"
 		}
-		inputDatas = append(inputDatas, inputData)
+		// inputDatas = append(inputDatas, inputData)
+		inputDatas[port] = inputData
 	}
 	inputString, _ := json.Marshal(inputDatas)
 	return string(inputString)

@@ -133,8 +133,9 @@ def delGlobalVar(name):
 def run(nodeid=None, inputs=None, script="", messageid="", extra=""):
     exec(functionSting % script.replace("\n", "\n    "), globals())
     loadedInputs = []
-    for input in inputs:
+    for inputPort in sorted(inputs.keys()):
         # input = json.loads(eval("'{}'".format(input)))
+        input = inputs[inputPort]
         loadedInputs.append(loadMethods[input["type"]](input["data"]))
     dumpedOutputs = []
     err = ""
