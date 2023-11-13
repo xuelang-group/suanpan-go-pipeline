@@ -63,7 +63,7 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	defer resp.Body.Close()
 	stdout, err := io.ReadAll(resp.Body)
 	log.Debugf("Python脚本编辑器(%s)调用python服务API返回: %s", currentNode.Id, string(stdout))
-	outs := []scriptData{}
+	outs := map[string]scriptData{}
 	err1 := json.Unmarshal(stdout, &outs)
 	if err1 != nil {
 		log.Errorf("Python脚本编辑器(%s)调用python服务API返回结果无法解析: %s", currentNode.Id, err.Error())
@@ -123,21 +123,15 @@ func readCsv(filePath string) dataframe.DataFrame {
 	return df
 }
 
-func getScriptOutputData(outputs []scriptData, currentNode Node) map[string]interface{} {
+func getScriptOutputData(outputs map[string]scriptData, currentNode Node) map[string]interface{} {
 	outputDatas := map[string]interface{}{}
-	idx := 0
 	for port := range currentNode.OutputData {
-		if len(outputs) >= idx+1 {
-			switch outputs[idx].Type {
-			case "csv":
-				outputDatas[port] = readCsv(outputs[idx].Data.(string))
-			case "json":
-				outputDatas[port] = outputs[idx].Data
-			}
-		} else {
-			break
+		switch outputs[port].Type {
+		case "csv":
+			outputDatas[port] = readCsv(outputs[port].Data.(string))
+		case "json":
+			outputDatas[port] = outputs[port].Data
 		}
-		idx += 1
 
 	}
 	return outputDatas
