@@ -145,20 +145,20 @@ def run(nodeid=None, inputs=None, script="", messageid="", extra=""):
         for idx, output in enumerate(outputs):
             if type(output) in dumpMethods:
                 if type(output) == pd.DataFrame:
-                    dumpedOutputs[f"out{idx}"] = {
+                    dumpedOutputs[f"out{idx+1}"] = {
                             "data": dumpMethods[type(output)](output, nodeid, idx),
                             "type": "json",
                         }
                     # idx += 1
                 else:
-                    dumpedOutputs[f"out{idx}"] = {
+                    dumpedOutputs[f"out{idx+1}"] = {
                         
                             "data": dumpMethods[type(output)](output),
                             "type": typeMappings[type(output)],
                         }
                     
             elif output is not None:
-                dumpedOutputs[f"out{idx}"] = {"data": output, "type": "json"}
+                dumpedOutputs[f"out{idx+1}"] = {"data": output, "type": "json"}
     except:
         # print("type of outputs is not supported.")
         print(traceback.format_exc(), file=sys.stderr)
