@@ -70,6 +70,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	} else {
 		tableQueryStr = loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	}
+	log.Infof("postgres数据库开始执行读取，执行SQL为: %s", tableQueryStr)
 	rows, err := db.Query(tableQueryStr)
 	if err != nil {
 		log.Infof("数据表检索失败")
