@@ -455,7 +455,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("追加写入表失败：%s", err.Error())
+					log.Infof("追加写入表失败\n执行SQL为：%s\n具体报错为：%s", tableInsertStr, err.Error())
 					return err
 				}
 			}
