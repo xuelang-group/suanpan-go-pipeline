@@ -1,6 +1,7 @@
 package components
 
 import (
+	"context"
 	"database/sql"
 	"encoding/csv"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -36,18 +38,33 @@ func postgresInit(currentNode Node) error {
 }
 func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
-	db, err := sql.Open("postgres", psqlconn)
-	// 设置连接池参数
-	db.SetMaxOpenConns(50)                  // 最大打开连接数
-	db.SetMaxIdleConns(25)                  // 连接池中的最大闲置连接数
-	db.SetConnMaxLifetime(10 * time.Minute) // 连接的最大存活时间
-	db.SetConnMaxIdleTime(5 * time.Minute)  // 连接池中连接的最大空闲时间
+	config, err := pgxpool.ParseConfig(psqlconn)
+	// db, err := sql.Open("postgres", psqlconn)
+	// // 设置连接池参数
+	// db.SetMaxOpenConns(50)                  // 最大打开连接数
+	// db.SetMaxIdleConns(25)                  // 连接池中的最大闲置连接数
+	// db.SetConnMaxLifetime(10 * time.Minute) // 连接的最大存活时间
+	// db.SetConnMaxIdleTime(5 * time.Minute)  // 连接池中连接的最大空闲时间
 	if err != nil {
-		log.Infof("数据库连接失败，请检查配置")
+		log.Infof("数据库配置解析失败，请检查配置：%s", err.Error())
 		return map[string]interface{}{}, nil
 	}
-	defer db.Close()
-	if err = db.Ping(); err != nil {
+	// 设置连接池参数
+	config.MaxConns = 25                      // 最大连接数
+	config.MinConns = 5                       // 最小连接数
+	config.MaxConnIdleTime = 30 * time.Minute // 连接的最大空闲时间
+	config.MaxConnLifetime = 1 * time.Hour    // 连接的最大存活时间
+	config.HealthCheckPeriod = 5 * time.Minute
+
+	// 创建连接池
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
+		log.Infof("数据库创建连接池失败，请检查配置：%s", err.Error())
+		return map[string]interface{}{}, nil
+	}
+	defer pool.Close()
+
+	if err = pool.Ping(context.Background()); err != nil {
 		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
@@ -75,24 +92,27 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	} else {
 		tableQueryStr = loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	}
-	log.Infof("postgres数据库开始执行读取，执行SQL为: %s", tableQueryStr)
-	rows, err := db.Query(tableQueryStr)
+	// log.Infof("postgres数据库开始执行读取，执行SQL为: %s", tableQueryStr)
+	// 创建一个新的context
+	ctx := context.Background()
+
+	rows, err := pool.Query(ctx, tableQueryStr)
 	if err != nil {
 		log.Infof("数据表检索失败：%s", err.Error())
 		return map[string]interface{}{}, nil
 	}
-	columnNames, err := rows.Columns()
-	if err != nil {
-		log.Info("查询数据表结构失败")
-		return map[string]interface{}{}, nil
-	}
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		log.Info("查询数据表类型失败")
-		return map[string]interface{}{}, nil
-	}
-	for i, col := range columnNames {
-		tableCol := pgDataCol{Name: col, Type: columnTypes[i].DatabaseTypeName()}
+	columnNames := rows.FieldDescriptions()
+	// if err != nil {
+	// 	log.Info("查询数据表结构失败")
+	// 	return map[string]interface{}{}, nil
+	// }
+	// columnTypes, err := rows.ColumnTypes()
+	// if err != nil {
+	// 	log.Info("查询数据表类型失败")
+	// 	return map[string]interface{}{}, nil
+	// }
+	for _, col := range columnNames {
+		tableCol := pgDataCol{Name: col.Name, Type: ""}
 		tableCols = append(tableCols, tableCol)
 	}
 	records := make([][]string, 0)
@@ -105,15 +125,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	recordNum := 0
 	defer rows.Close()
 	for rows.Next() {
-		record := make([]interface{}, 0, len(tableCols))
-		for _, col := range tableCols {
-			switch strings.ToLower(col.Type) {
-			case "date", "time without time zone", "time with time zone", "timestamp without time zone", "timestamp with time zone":
-				record = append(record, sql.NullTime{})
-			default:
-				record = append(record, sql.NullString{})
-			}
-		}
+		record := make([]interface{}, len(tableCols))
 		recordP := make([]interface{}, len(tableCols))
 		for i := range record {
 			recordP[i] = &record[i]
@@ -127,12 +139,32 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		data = append(data, strconv.FormatInt(int64(recordNum), 10))
 		for i := range record {
 			switch v := record[i].(type) {
-			case int64, int16, int32, int8, int, uint, uint16, uint32, uint64:
-				data = append(data, strconv.FormatInt(v.(int64), 10))
+			case int64:
+				data = append(data, strconv.FormatInt(v, 10))
+			case int32:
+				data = append(data, strconv.FormatInt(int64(v), 10))
+			case int16:
+				data = append(data, strconv.FormatInt(int64(v), 10))
+			case int8:
+				data = append(data, strconv.FormatInt(int64(v), 10))
+			case int:
+				data = append(data, strconv.FormatInt(int64(v), 10))
+			case uint64:
+				data = append(data, strconv.FormatUint(v, 10))
+			case uint32:
+				data = append(data, strconv.FormatUint(uint64(v), 10))
+			case uint16:
+				data = append(data, strconv.FormatUint(uint64(v), 10))
+			case uint8: // 通常为 byte
+				data = append(data, strconv.FormatUint(uint64(v), 10))
+			case uint:
+				data = append(data, strconv.FormatUint(uint64(v), 10))
 			case bool:
 				data = append(data, strconv.FormatBool(v))
-			case float32, float64:
-				data = append(data, strconv.FormatFloat(v.(float64), 'E', -1, 32))
+			case float32:
+				data = append(data, strconv.FormatFloat(float64(v), 'E', -1, 32))
+			case float64:
+				data = append(data, strconv.FormatFloat(v, 'E', -1, 32))
 			case time.Time:
 				if strings.ToLower(tableCols[i].Type) == "date" {
 					data = append(data, v.Format("2006-01-02"))
@@ -144,7 +176,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 			case []uint8:
 				data = append(data, string([]byte(v)))
 			default:
-				data = append(data, v.(string))
+				data = append(data, fmt.Sprintf("%v", v))
 			}
 		}
 		recordNum += 1
