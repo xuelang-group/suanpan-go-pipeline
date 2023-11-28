@@ -37,6 +37,10 @@ func postgresInit(currentNode Node) error {
 func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
 	db, err := sql.Open("postgres", psqlconn)
+	// 设置连接池参数
+	db.SetMaxOpenConns(25)                 // 最大打开连接数
+	db.SetMaxIdleConns(25)                 // 连接池中的最大闲置连接数
+	db.SetConnMaxLifetime(5 * time.Minute) // 连接的最大存活时间
 	if err != nil {
 		log.Infof("数据库连接失败，请检查配置")
 		return map[string]interface{}{}, nil
