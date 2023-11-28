@@ -38,9 +38,10 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
 	db, err := sql.Open("postgres", psqlconn)
 	// 设置连接池参数
-	db.SetMaxOpenConns(25)                 // 最大打开连接数
-	db.SetMaxIdleConns(25)                 // 连接池中的最大闲置连接数
-	db.SetConnMaxLifetime(5 * time.Minute) // 连接的最大存活时间
+	db.SetMaxOpenConns(50)                  // 最大打开连接数
+	db.SetMaxIdleConns(25)                  // 连接池中的最大闲置连接数
+	db.SetConnMaxLifetime(10 * time.Minute) // 连接的最大存活时间
+	db.SetConnMaxIdleTime(5 * time.Minute)  // 连接池中连接的最大空闲时间
 	if err != nil {
 		log.Infof("数据库连接失败，请检查配置")
 		return map[string]interface{}{}, nil
@@ -77,7 +78,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	log.Infof("postgres数据库开始执行读取，执行SQL为: %s", tableQueryStr)
 	rows, err := db.Query(tableQueryStr)
 	if err != nil {
-		log.Infof("数据表检索失败")
+		log.Infof("数据表检索失败：%s", err.Error())
 		return map[string]interface{}{}, nil
 	}
 	columnNames, err := rows.Columns()
