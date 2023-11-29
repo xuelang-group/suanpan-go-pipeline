@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -103,7 +104,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	recordNum := 0
 	defer rows.Close()
 	for rows.Next() {
-		record := make([]*string, len(tableCols))
+		record := make([]interface{}, len(tableCols))
 		recordP := make([]interface{}, len(tableCols))
 		for i := range record {
 			recordP[i] = &record[i]
@@ -116,62 +117,64 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		data := make([]string, 0)
 		data = append(data, strconv.FormatInt(int64(recordNum), 10))
 		for i := range record {
-			if record[i] == nil {
+			switch v := record[i].(type) {
+			case int64:
+				data = append(data, strconv.FormatInt(v, 10))
+			case int32:
+				data = append(data, strconv.FormatInt(int64(v), 10))
+			case int16:
+				data = append(data, strconv.FormatInt(int64(v), 10))
+			case int8:
+				data = append(data, strconv.FormatInt(int64(v), 10))
+			case int:
+				data = append(data, strconv.FormatInt(int64(v), 10))
+			case uint64:
+				data = append(data, strconv.FormatUint(v, 10))
+			case uint32:
+				data = append(data, strconv.FormatUint(uint64(v), 10))
+			case uint16:
+				data = append(data, strconv.FormatUint(uint64(v), 10))
+			case uint8: // 通常为 byte
+				data = append(data, strconv.FormatUint(uint64(v), 10))
+			case uint:
+				data = append(data, strconv.FormatUint(uint64(v), 10))
+			case bool:
+				data = append(data, strconv.FormatBool(v))
+			case float32:
+				data = append(data, strconv.FormatFloat(float64(v), 'E', -1, 32))
+			case float64:
+				data = append(data, strconv.FormatFloat(v, 'E', -1, 32))
+			case time.Time:
+				if columnNames[i].DataTypeOID == 1082 {
+					data = append(data, v.Format("2006-01-02"))
+				} else {
+					data = append(data, v.Format("2006-01-02 15:04:05"))
+				}
+			case nil:
 				data = append(data, "")
-			} else {
-				data = append(data, *record[i])
+			case []uint8:
+				data = append(data, string([]byte(v)))
+			case pgtype.Numeric:
+				value, _ := v.MarshalJSON()
+				data = append(data, string(value))
+			case pgtype.Date:
+				data = append(data, v.Time.Format("2006-01-02"))
+			case pgtype.Time:
+				duration := time.Duration(v.Microseconds * 1000)
+				hours := duration / time.Hour
+				duration -= hours * time.Hour
+				minutes := duration / time.Minute
+				duration -= minutes * time.Minute
+				seconds := duration / time.Second
+				data = append(data, fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds))
+			case pgtype.Timestamp:
+				data = append(data, v.Time.Format("2006-01-02 15:04:05"))
+			case pgtype.Timestamptz:
+				data = append(data, v.Time.Format("2006-01-02 15:04:05"))
+			default:
+				data = append(data, fmt.Sprintf("%v", v))
 			}
 		}
-		// for i := range record {
-		// 	switch v := record[i].(type) {
-		// 	case int64:
-		// 		data = append(data, strconv.FormatInt(v, 10))
-		// 	case int32:
-		// 		data = append(data, strconv.FormatInt(int64(v), 10))
-		// 	case int16:
-		// 		data = append(data, strconv.FormatInt(int64(v), 10))
-		// 	case int8:
-		// 		data = append(data, strconv.FormatInt(int64(v), 10))
-		// 	case int:
-		// 		data = append(data, strconv.FormatInt(int64(v), 10))
-		// 	case uint64:
-		// 		data = append(data, strconv.FormatUint(v, 10))
-		// 	case uint32:
-		// 		data = append(data, strconv.FormatUint(uint64(v), 10))
-		// 	case uint16:
-		// 		data = append(data, strconv.FormatUint(uint64(v), 10))
-		// 	case uint8: // 通常为 byte
-		// 		data = append(data, strconv.FormatUint(uint64(v), 10))
-		// 	case uint:
-		// 		data = append(data, strconv.FormatUint(uint64(v), 10))
-		// 	case bool:
-		// 		data = append(data, strconv.FormatBool(v))
-		// 	case float32:
-		// 		data = append(data, strconv.FormatFloat(float64(v), 'E', -1, 32))
-		// 	case float64:
-		// 		data = append(data, strconv.FormatFloat(v, 'E', -1, 32))
-		// 	case time.Time:
-		// 		if columnNames[i].DataTypeOID == 1082 {
-		// 			data = append(data, v.Format("2006-01-02"))
-		// 		} else {
-		// 			data = append(data, v.Format("2006-01-02 15:04:05"))
-		// 		}
-		// 	case nil:
-		// 		data = append(data, "")
-		// 	case []uint8:
-		// 		data = append(data, string([]byte(v)))
-		// 	case pgtype.Numeric:
-		// 		data = append(data, v.Int.Text(-1))
-		// 	case pgtype.Date:
-		// 		data = append(data, v.Time.Format("2006-01-02"))
-		// 	case pgtype.Timestamp:
-		// 		data = append(data, v.Time.Format("2006-01-02 15:04:05"))
-		// 	case pgtype.Timestamptz:
-		// 		data = append(data, v.Time.Format("2006-01-02 15:04:05"))
-		// 	default:
-		// 		data = append(data, fmt.Sprintf("%v", v))
-		// 	}
-		// }
 		recordNum += 1
 		// records = append(records, data)
 		err := w.Write(data)
