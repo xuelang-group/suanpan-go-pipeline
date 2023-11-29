@@ -158,7 +158,8 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 				value, _ := v.MarshalJSON()
 				data = append(data, string(value))
 			case pgtype.Date:
-				data = append(data, v.Time.Format("2006-01-02"))
+				value, _ := v.MarshalJSON()
+				data = append(data, string(value))
 			case pgtype.Time:
 				duration := time.Duration(v.Microseconds * 1000)
 				hours := duration / time.Hour
@@ -168,9 +169,11 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 				seconds := duration / time.Second
 				data = append(data, fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds))
 			case pgtype.Timestamp:
-				data = append(data, v.Time.Format("2006-01-02 15:04:05"))
+				value, _ := v.MarshalJSON()
+				data = append(data, string(value))
 			case pgtype.Timestamptz:
-				data = append(data, v.Time.Format("2006-01-02 15:04:05"))
+				value, _ := v.MarshalJSON()
+				data = append(data, string(value))
 			default:
 				data = append(data, fmt.Sprintf("%v", v))
 			}
