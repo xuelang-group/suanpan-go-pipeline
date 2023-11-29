@@ -232,7 +232,7 @@ func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]int
 	}()
 	csvToSqlErr := ReadCsvToSql(csvFile, currentNode)
 	if csvToSqlErr != nil {
-		log.Error("未能正常写入数据库")
+		log.Errorf("未能正常写入数据库：%s", csvToSqlErr.Error())
 		return map[string]interface{}{}, nil
 	}
 	return map[string]interface{}{"out1": "success"}, nil
@@ -243,7 +243,9 @@ func readBatch(csvReader *csv.Reader, batch int) ([][]string, error) {
 	for i := 0; i < batch; i++ {
 		record, err := csvReader.Read()
 		if err == io.EOF {
-			records = append(records, record)
+			if len(record) > 0 {
+				records = append(records, record)
+			}
 			return records, err
 		}
 		if err != nil {
