@@ -238,9 +238,31 @@ func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]int
 	return map[string]interface{}{"out1": "success"}, nil
 }
 
+func readBatch(csvReader *csv.Reader, batch int) ([][]string, error) {
+	records := make([][]string, 0)
+	for i := 0; i < batch; i++ {
+		record, err := csvReader.Read()
+		if err == io.EOF {
+			records = append(records, record)
+			return records, err
+		}
+		if err != nil {
+			return [][]string{}, err
+		}
+		records = append(records, record)
+	}
+	return records, nil
+}
+
 func ReadCsvToSql(r io.Reader, currentNode Node) error {
+	chunksizeRaw := currentNode.Config["chunksize"].(string)
+	chunksize, err := strconv.Atoi(chunksizeRaw)
+	if err != nil {
+		log.Infof("chunksize设置非数值")
+		return err
+	}
 	csvReader := csv.NewReader(r)
-	records, err := csvReader.ReadAll()
+	columns, err := csvReader.Read()
 	if err != nil {
 		return err
 	}
@@ -271,17 +293,11 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 
 	tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
 	schema := currentNode.Config["databaseChoose"].(string)
-	chunksizeRaw := currentNode.Config["chunksize"].(string)
 	mode := currentNode.Config["mode"].(string)
-	chunksize, err := strconv.Atoi(chunksizeRaw)
-	if err != nil {
-		log.Infof("chunksize设置非数值")
-		return err
-	}
+
 	ctx := context.Background()
 	if strings.Compare(mode, "replace") == 0 {
 		//新建表
-		columns := records[0]
 		tableSchemaArr := make([]string, 0)
 		for i := 1; i < len(columns); i++ {
 			tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar")
@@ -301,38 +317,27 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			log.Infof("创建表失败")
 			return err
 		}
-		//插入数据
-		l := len(records) - 1
-		n := l/chunksize + 1
 
-		for iter := 0; iter < n; iter++ {
+		for {
+			records, err := readBatch(csvReader, chunksize)
+			if err != nil && err != io.EOF {
+				log.Infof("读取csv文件失败")
+				return err
+			}
 			var tableInsertValues string
 			tableInsertArr := make([]string, 0)
-			if iter < n-1 {
-				for i := iter*chunksize + 1; i < chunksize*(iter+1)+1; i++ {
-					var rowTmpStr string
-					recordsArr := make([]string, 0)
-					for colIdx, col := range records[i] {
-						if colIdx != 0 {
-							recordsArr = append(recordsArr, "'"+strings.ReplaceAll(col, "'", "''")+"'")
-						}
+			for i := 0; i < len(records); i++ {
+				var rowTmpStr string
+				recordsArr := make([]string, 0)
+				for colIdx, col := range records[i] {
+					if colIdx != 0 {
+						recordsArr = append(recordsArr, "'"+strings.ReplaceAll(col, "'", "''")+"'")
 					}
-					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
-					tableInsertArr = append(tableInsertArr, rowTmpStr)
 				}
-			} else {
-				for i := iter*chunksize + 1; i < l+1; i++ {
-					var rowTmpStr string
-					recordsArr := make([]string, 0)
-					for colIdx, col := range records[i] {
-						if colIdx != 0 {
-							recordsArr = append(recordsArr, "'"+strings.ReplaceAll(col, "'", "''")+"'")
-						}
-					}
-					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
-					tableInsertArr = append(tableInsertArr, rowTmpStr)
-				}
+				rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
+				tableInsertArr = append(tableInsertArr, rowTmpStr)
 			}
+
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableColumns := make([]string, 0)
@@ -346,6 +351,9 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 					log.Infof("覆盖写入表失败")
 					return err
 				}
+			}
+			if err == io.EOF {
+				return nil
 			}
 		}
 
@@ -371,7 +379,6 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		if len(tableCols) == 0 {
 			log.Infof("数据表检索失败, 开始自动创建数据表")
 			//新建表
-			columns := records[0]
 			tableSchemaArr := make([]string, 0)
 			for i := 1; i < len(columns); i++ {
 				tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar")
@@ -418,7 +425,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		headerToRecords := make(map[string]int)
 		for _, header := range headers {
 			colIdx := -1
-			for colNum, col := range records[0] {
+			for colNum, col := range columns {
 				if "\""+col+"\"" == header {
 					colIdx = colNum
 				}
@@ -434,55 +441,35 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 				return err
 			}
 		}
-		//插入数据
-		l := len(records) - 1
-		n := l/chunksize + 1
-		for iter := 0; iter < n; iter++ {
+		for {
+			records, err := readBatch(csvReader, chunksize)
+			if err != nil && err != io.EOF {
+				log.Infof("读取csv文件失败")
+				return err
+			}
 			var tableInsertValues string
 			tableInsertArr := make([]string, 0)
-			if iter < n-1 {
-				for i := iter*chunksize + 1; i < chunksize*(iter+1)+1; i++ {
-					var rowTmpStr string
-					recordsArr := make([]string, 0)
-					for ctype := 0; ctype < len(headers); ctype++ {
-						if headerToRecords[headers[ctype]] != -1 {
-							recordIdx := headerToRecords[headers[ctype]]
-							if len(records[i][recordIdx]) == 0 && strings.Compare(headersTypes[ctype], "character varying") != 0 {
-								recordsArr = append(recordsArr, "NULL")
-							} else if len(records[i][recordIdx]) > 0 && strings.Compare(headersTypes[ctype], "integer") == 0 {
-								recordsArr = append(recordsArr, "'"+strings.Split(records[i][recordIdx], ".")[0]+"'")
-							} else {
-								recordsArr = append(recordsArr, "'"+strings.ReplaceAll(records[i][recordIdx], "'", "''")+"'")
-							}
-						} else {
+			for i := 0; i < len(records); i++ {
+				var rowTmpStr string
+				recordsArr := make([]string, 0)
+				for ctype := 0; ctype < len(headers); ctype++ {
+					if headerToRecords[headers[ctype]] != -1 {
+						recordIdx := headerToRecords[headers[ctype]]
+						if len(records[i][recordIdx]) == 0 && strings.Compare(headersTypes[ctype], "character varying") != 0 {
 							recordsArr = append(recordsArr, "NULL")
-						}
-					}
-					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
-					tableInsertArr = append(tableInsertArr, rowTmpStr)
-				}
-			} else {
-				for i := iter*chunksize + 1; i < l+1; i++ {
-					var rowTmpStr string
-					recordsArr := make([]string, 0)
-					for ctype := 0; ctype < len(headers); ctype++ {
-						if headerToRecords[headers[ctype]] != -1 {
-							recordIdx := headerToRecords[headers[ctype]]
-							if len(records[i][recordIdx]) == 0 && strings.Compare(headersTypes[ctype], "character varying") != 0 {
-								recordsArr = append(recordsArr, "NULL")
-							} else if len(records[i][recordIdx]) > 0 && strings.Compare(headersTypes[ctype], "integer") == 0 {
-								recordsArr = append(recordsArr, "'"+strings.Split(records[i][recordIdx], ".")[0]+"'")
-							} else {
-								recordsArr = append(recordsArr, "'"+strings.ReplaceAll(records[i][recordIdx], "'", "''")+"'")
-							}
+						} else if len(records[i][recordIdx]) > 0 && strings.Compare(headersTypes[ctype], "integer") == 0 {
+							recordsArr = append(recordsArr, "'"+strings.Split(records[i][recordIdx], ".")[0]+"'")
 						} else {
-							recordsArr = append(recordsArr, "NULL")
+							recordsArr = append(recordsArr, "'"+strings.ReplaceAll(records[i][recordIdx], "'", "''")+"'")
 						}
+					} else {
+						recordsArr = append(recordsArr, "NULL")
 					}
-					rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
-					tableInsertArr = append(tableInsertArr, rowTmpStr)
 				}
+				rowTmpStr = "(" + strings.Join(recordsArr, ",") + ")"
+				tableInsertArr = append(tableInsertArr, rowTmpStr)
 			}
+
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
@@ -492,7 +479,9 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 					return err
 				}
 			}
+			if err == io.EOF {
+				return nil
+			}
 		}
 	}
-	return nil
 }
