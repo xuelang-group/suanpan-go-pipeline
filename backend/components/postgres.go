@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -153,6 +154,8 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 				data = append(data, "")
 			case []uint8:
 				data = append(data, string([]byte(v)))
+			case pgtype.Numeric:
+				data = append(data, v.Int.String())
 			default:
 				data = append(data, fmt.Sprintf("%v", v))
 			}
