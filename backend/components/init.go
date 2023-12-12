@@ -5,6 +5,7 @@ import (
 	"goPipeline/utils"
 	"goPipeline/variables"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"text/template"
@@ -184,8 +185,9 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 								log.Debugf("数据下发到节点%s(%s)", currentNode.NextNodes[i].Key, currentNode.NextNodes[i].Id)
 								tmpData := data
 								if dataString, ok := tmpData.(string); ok {
-									if strings.HasSuffix(dataString, "data.csv") {
-										dst := strings.Replace(dataString, "data.csv", "data_"+currentNode.NextNodes[i].Id+".csv", -1)
+									if strings.HasSuffix(dataString, ".csv") {
+										basename := path.Base(dataString)
+										dst := strings.Replace(dataString, basename, "data_"+currentNode.NextNodes[i].Id+".csv", -1)
 										utils.CopyFile(dataString, dst)
 										tmpData = dst
 									}
@@ -199,10 +201,13 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 						}
 					}
 					if dataString, ok := data.(string); ok {
-						if strings.HasSuffix(dataString, "data.csv") {
-							err = os.Remove(dataString)
-							if err != nil {
-								log.Errorf("Can not remove csv file: %s, with error: %s", dataString, err.Error())
+						if strings.HasSuffix(dataString, ".csv") {
+							_, err := os.Stat(dataString)
+							if err == nil {
+								err = os.Remove(dataString)
+								if err != nil {
+									log.Errorf("Can not remove csv file: %s, with error: %s", dataString, err.Error())
+								}
 							}
 						}
 					}
