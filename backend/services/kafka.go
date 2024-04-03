@@ -27,6 +27,7 @@ type KafkaService struct {
 
 func getKafkaReader(kafkaURL string, topic string, groupId string, topics string) *kafka.Reader {
 	brokers := strings.Split(kafkaURL, ",")
+	log.Infof("设置 url: %s 为brokers:%v", kafkaURL, brokers)
 	if len(topics) == 0 {
 		return kafka.NewReader(kafka.ReaderConfig{
 			Brokers:  brokers,
