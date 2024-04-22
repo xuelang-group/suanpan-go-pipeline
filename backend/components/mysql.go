@@ -335,7 +335,7 @@ func mysqlExecutorMain(currentNode Node, inputData RequestData) (map[string]inte
 	_, err := db.Exec(tableQueryStr)
 	if err != nil {
 		log.Errorf("Mysql执行组件(%s)数据表执行sql语句失败: %s", currentNode.Id, err.Error())
-		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败", inputData.ID, currentNode.InputData)
+		log.Errorf("消息ID为: %s, 消息内容为: %v 的消息运行失败, 实际执行SQL为: %s", inputData.ID, currentNode.InputData, tableQueryStr)
 		currentNode.Config["mysqlConfigFail"] = true
 		return map[string]interface{}{}, err
 	}
