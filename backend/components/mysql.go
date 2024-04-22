@@ -41,7 +41,7 @@ func mysqlInit(currentNode Node) error {
 	currentNode.Config["mysqlDB"] = &mysqlDB{l: new(sync.Mutex)}
 	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
 	go func() {
-		mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?collation=utf8mb4_general_ci", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
+		mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
 		db, err := sql.Open("mysql", mysqluri)
 		if err != nil {
 			log.Errorf("Mysql组件(%s)初始化数据库连接失败，请检查配置: %s", currentNode.Id, err.Error())
