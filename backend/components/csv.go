@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/go-gota/gota/dataframe"
@@ -14,10 +15,12 @@ import (
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
 )
 
+var pathId int
+
 func csvDownloaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	needBasename := currentNode.Config["needBasename"].(bool)
 	args := config.GetArgs()
-	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
+	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], "tmp", currentNode.Id, "input", strconv.Itoa(pathId), "data.csv")
 	tmpKey := currentNode.InputData["in1"].(string)
 	if needBasename {
 		tmpKey = path.Join(currentNode.InputData["in1"].(string), "data.csv")
@@ -28,6 +31,7 @@ func csvDownloaderMain(currentNode Node, inputData RequestData) (map[string]inte
 		log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
 		return map[string]interface{}{}, nil
 	}
+	pathId = (pathId + 1) % 20
 	return map[string]interface{}{"out1": tmpPath}, nil
 }
 
