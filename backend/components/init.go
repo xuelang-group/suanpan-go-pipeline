@@ -156,10 +156,11 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 	case <-stopChan:
 		log.Infof("节点%s(%s)运行被中断", currentNode.Key, currentNode.Id)
 	default:
-		receiveInputs := false
+		receiveInputs := true
 		for _, v := range currentNode.InputData {
-			if v != nil {
-				receiveInputs = true
+			if v == nil {
+				receiveInputs = false
+				break
 			}
 		}
 		if len(inputData.Data) > 0 || receiveInputs {

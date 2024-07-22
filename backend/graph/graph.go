@@ -204,6 +204,7 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 	log.Info("流程图开始运行")
 	g.runtimeErr = nil
 	start := time.Now()
+	g.nodesInit()
 	g.PipelineStatus = 1
 	g.wg = sync.WaitGroup{}
 	g.stopChan = make(chan bool)
@@ -235,6 +236,12 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 	close(g.stopChan)
 	cost := time.Since(start)
 	log.Infof("流程图运行结束, 耗时: %dms", cost.Milliseconds())
+	// 清空输入端口上次数据
+	for node := range g.Nodes {
+		for k, _ := range g.Nodes[node].InputData {
+			g.Nodes[node].InputData[k] = nil
+		}
+	}
 	return g.runtimeErr
 }
 
