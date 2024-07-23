@@ -204,7 +204,6 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 	log.Info("流程图开始运行")
 	g.runtimeErr = nil
 	start := time.Now()
-	g.nodesInit()
 	g.PipelineStatus = 1
 	g.wg = sync.WaitGroup{}
 	g.stopChan = make(chan bool)
