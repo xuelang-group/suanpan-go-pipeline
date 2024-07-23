@@ -43,8 +43,8 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		return map[string]interface{}{}, nil
 	}
 
-	config.MaxConns = 25                      // 最大连接数
-	config.MinConns = 5                       // 最小连接数
+	// config.MaxConns = 25                      // 最大连接数
+	// config.MinConns = 5                       // 最小连接数
 	config.MaxConnIdleTime = 30 * time.Minute // 连接的最大空闲时间
 	config.MaxConnLifetime = 1 * time.Hour    // 连接的最大存活时间
 	config.HealthCheckPeriod = 5 * time.Minute
@@ -200,8 +200,8 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 		return map[string]interface{}{}, nil
 	}
 
-	config.MaxConns = 25                      // 最大连接数
-	config.MinConns = 5                       // 最小连接数
+	// config.MaxConns = 25                      // 最大连接数
+	// config.MinConns = 5                       // 最小连接数
 	config.MaxConnIdleTime = 30 * time.Minute // 连接的最大空闲时间
 	config.MaxConnLifetime = 1 * time.Hour    // 连接的最大存活时间
 	config.HealthCheckPeriod = 5 * time.Minute
@@ -297,8 +297,8 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		return err
 	}
 
-	config.MaxConns = 25                      // 最大连接数
-	config.MinConns = 5                       // 最小连接数
+	// config.MaxConns = 25                      // 最大连接数
+	// config.MinConns = 5                       // 最小连接数
 	config.MaxConnIdleTime = 30 * time.Minute // 连接的最大空闲时间
 	config.MaxConnLifetime = 1 * time.Hour    // 连接的最大存活时间
 	config.HealthCheckPeriod = 5 * time.Minute

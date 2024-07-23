@@ -62,7 +62,7 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	}
 	defer resp.Body.Close()
 	stdout, err := io.ReadAll(resp.Body)
-	log.Debugf("Python脚本编辑器(%s)调用python服务API返回: %s", currentNode.Id, string(stdout))
+	log.Infof("Python脚本编辑器(%s)调用python服务API返回: %s", currentNode.Id, string(stdout))
 	outs := map[string]scriptData{}
 	err1 := json.Unmarshal(stdout, &outs)
 	if err1 != nil {
