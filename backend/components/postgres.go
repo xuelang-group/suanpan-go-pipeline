@@ -186,6 +186,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 			return map[string]interface{}{}, nil
 		}
 	}
+	log.Infof("当前节点currentNode %s 有%d条数据", currentNode.Id, recordNum)
 	w.Flush()
 
 	return map[string]interface{}{"out1": tmpPath}, nil
@@ -256,6 +257,7 @@ func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]int
 		log.Errorf("未能正常写入数据库：%s", csvToSqlErr.Error())
 		return map[string]interface{}{}, nil
 	}
+	log.Infof("当前节点 %s成功写入数据库", currentNode.Id)
 	return map[string]interface{}{"out1": "success"}, nil
 }
 
@@ -343,6 +345,8 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 
 		for {
 			records, err := readBatch(csvReader, chunksize)
+			log.Infof("当前节点%s写入数据库接受到数据%d条", currentNode.Id, len(records))
+			log.Debugf("写入数据 %v", records)
 			if err != nil && err != io.EOF {
 				log.Infof("读取csv文件失败")
 				return err
@@ -466,6 +470,8 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		}
 		for {
 			records, err := readBatch(csvReader, chunksize)
+			log.Infof("当前节点%s写入数据库接受到数据%d条", currentNode.Id, len(records))
+			log.Debugf("写入数据 %v", records)
 			if err != nil && err != io.EOF {
 				log.Infof("读取csv文件失败")
 				return err
