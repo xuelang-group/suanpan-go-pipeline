@@ -241,6 +241,12 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 			g.Nodes[node].InputData[k] = nil
 		}
 	}
+	// 清空文件夹
+	args := config.GetArgs()
+	err := os.RemoveAll(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])])
+	if err != nil {
+		log.Errorf("删除文件夹失败, %s", err.Error())
+	}
 	return g.runtimeErr
 }
 
