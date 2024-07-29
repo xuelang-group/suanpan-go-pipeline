@@ -37,7 +37,7 @@ func csvDownloaderMain(currentNode Node, inputData RequestData) (map[string]inte
 
 func csvUploaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	needBasename := currentNode.Config["needBasename"].(bool)
-	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/%s/data.csv", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId, currentNode.Id)
+	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/data.csv", config.GetEnv().SpUserId, config.GetEnv().SpAppId, config.GetEnv().SpNodeId, currentNode.Id)
 	tmpPath := currentNode.InputData["in1"].(string)
 	storageErr := storage.FPutObject(tmpKey, tmpPath)
 	if storageErr != nil {

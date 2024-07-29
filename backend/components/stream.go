@@ -123,7 +123,7 @@ func saveOutputData(currentNode Node, inputData RequestData) string {
 }
 
 func csvFileUpload(currentNode Node, inputData RequestData) string {
-	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s/%s", config.GetEnv().SpUserId, config.GetEnv().SpAppId, strings.Join(strings.Split(inputData.ID, "-"), ""), config.GetEnv().SpNodeId, strings.Replace(currentNode.Key, "outputData", "out", -1))
+	tmpKey := fmt.Sprintf("studio/%s/tmp/%s/%s/%s", config.GetEnv().SpUserId, config.GetEnv().SpAppId, config.GetEnv().SpNodeId, currentNode.Id)
 	storage.FPutObject(fmt.Sprintf("%s/data.csv", tmpKey), currentNode.InputData["in1"].(string))
 	os.Remove(currentNode.InputData["in1"].(string))
 	return tmpKey
