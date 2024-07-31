@@ -221,7 +221,7 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 	ctx := context.Background()
 	_, err = pool.Exec(ctx, tableQueryStr)
 	if err != nil {
-		log.Infof("数据库执行sql语句失败")
+		log.Infof("%s 数据库执行sql语句失败", currentNode.Id)
 		return map[string]interface{}{}, nil
 	}
 	return map[string]interface{}{"out1": "success"}, nil

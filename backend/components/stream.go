@@ -131,7 +131,7 @@ func csvFileUpload(currentNode Node, inputData RequestData) string {
 
 func csvFileDownload(data string, id string) string {
 	args := config.GetArgs()
-	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], data, id, "data.csv")
+	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], id, "data.csv")
 	tmpKey := path.Join(data, "data.csv")
 	os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
 	storage.FGetObject(tmpKey, tmpPath)

@@ -236,17 +236,17 @@ func (g *Graph) Run(inputData map[string]string, id string, extra string, server
 	cost := time.Since(start)
 	log.Infof("流程图运行结束, 耗时: %dms", cost.Milliseconds())
 	// 清空输入端口上次数据
-	for node := range g.Nodes {
-		for k, _ := range g.Nodes[node].InputData {
-			g.Nodes[node].InputData[k] = nil
-		}
-	}
-	// 清空文件夹
-	args := config.GetArgs()
-	err := os.RemoveAll(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])])
-	if err != nil {
-		log.Errorf("删除文件夹失败, %s", err.Error())
-	}
+	// for node := range g.Nodes {
+	// 	for k, _ := range g.Nodes[node].InputData {
+	// 		g.Nodes[node].InputData[k] = nil
+	// 	}
+	// }
+	// // 清空文件夹
+	// args := config.GetArgs()
+	// err := os.RemoveAll(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])])
+	// if err != nil {
+	// 	log.Errorf("删除文件夹失败, %s", err.Error())
+	// }
 	return g.runtimeErr
 }
 
