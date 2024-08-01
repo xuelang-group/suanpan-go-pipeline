@@ -291,5 +291,3 @@ gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b/go.mod h1:K4uyk7z7BCEPqu6E+C
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 rsc.io/pdf v0.1.1/go.mod h1:n8OzWcQ6Sp37PL01nO98y4iUCRdTGarVfzxY20ICaU4=
-sqlflow.org/gohive v0.0.0-20220817082204-15a5e01fd889 h1:RCQqWZk72QrKCv82pZm7SzAuGOMGrXuGt9mdN5ZB6WU=
-sqlflow.org/gohive v0.0.0-20220817082204-15a5e01fd889/go.mod h1:W0khd2lkSQjmVJnNRxkWgLcNnRoai4i9OKhkGRy2xyk=

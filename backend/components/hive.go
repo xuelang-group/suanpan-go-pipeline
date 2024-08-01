@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/beltran/gohive"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
-	_ "sqlflow.org/gohive"
 )
 
 type hiveDataCol struct {

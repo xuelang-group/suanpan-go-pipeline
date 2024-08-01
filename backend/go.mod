@@ -3,6 +3,7 @@ module goPipeline
 go 1.19
 
 require (
+	github.com/beltran/gohive v1.6.0
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/go-gota/gota v0.12.0
 	github.com/googollee/go-socket.io v1.7.0
@@ -11,13 +12,11 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/xuelang-group/suanpan-go-sdk v1.0.13
 	gopkg.in/yaml.v3 v3.0.1
-	sqlflow.org/gohive v0.0.0-20220817082204-15a5e01fd889
 )
 
 require (
 	github.com/aliyun/aliyun-oss-go-sdk v2.2.9+incompatible // indirect
 	github.com/apache/thrift v0.19.0 // indirect
-	github.com/beltran/gohive v1.6.0 // indirect
 	github.com/beltran/gosasl v0.0.0-20230502191549-a9c03a2e2a59 // indirect
 	github.com/beltran/gssapi v0.0.0-20200324152954-d86554db4bab // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
