@@ -17,7 +17,7 @@ type DataConnectorComponent struct {
 func (c *DataConnectorComponent) CallHandler(r stream.Request) {
 	inputData := r.Input
 	for key, value := range inputData {
-		log.Infof("输入端口： %s 收到请求数据： %s", key, value)
+		log.Infof("输入端口： %s 收到请求数据： %s, 当前画布状态: %d", key, value, graph.GraphInst.Status)
 	}
 	if graph.GraphInst.Status == 1 {
 		graph.GraphInst.Run(inputData, r.ID, r.Extra, nil, false)
