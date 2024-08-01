@@ -7,8 +7,6 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
-	"strings"
-
 	"github.com/go-gota/gota/dataframe"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
