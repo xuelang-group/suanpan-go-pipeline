@@ -123,6 +123,7 @@ func RunWeb(appType string) {
 
 	server.OnEvent("/", "graph.status.set", func(s socketio.Conn, msg map[string]interface{}) RespondMsg {
 		graph.GraphInst.Status = uint(msg["status"].(float64))
+		log.Infof("graph.status设置: %v", graph.GraphInst.Status)
 		if graph.GraphInst.Status == 0 {
 			services.ServicesManager.Release()
 			graph.GraphInst.Release()
