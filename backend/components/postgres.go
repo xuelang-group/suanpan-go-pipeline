@@ -265,7 +265,8 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		}
 		_, err = db.Exec(tableCreateStr)
 		if err != nil {
-			log.Infof("创建表失败")
+			log.Infof("创建表失败, 原因: %s", err.Error())
+			log.Infof("创建表sql语句: %s", tableCreateStr)
 			return err
 		}
 		//插入数据
@@ -354,7 +355,8 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			}
 			_, err = db.Exec(tableCreateStr)
 			if err != nil {
-				log.Infof("创建表失败")
+				log.Infof("创建表失败, 原因: %s", err.Error())
+				log.Infof("创建表sql语句: %s", tableCreateStr)
 				return err
 			}
 			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
