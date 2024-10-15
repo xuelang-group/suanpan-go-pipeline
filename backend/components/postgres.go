@@ -38,12 +38,12 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
 	db, err := sql.Open("postgres", psqlconn)
 	if err != nil {
-		log.Infof("数据库连接失败，请检查配置")
+		log.Error("数据库连接失败，请检查配置")
 		return map[string]interface{}{}, nil
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+		log.Errorf("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
 	// tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", currentNode.Config["table"].(string), currentNode.Config["schema"].(string))
@@ -72,17 +72,17 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 	}
 	rows, err := db.Query(tableQueryStr)
 	if err != nil {
-		log.Infof("数据表检索失败")
+		log.Error("数据表检索失败")
 		return map[string]interface{}{}, nil
 	}
 	columnNames, err := rows.Columns()
 	if err != nil {
-		log.Info("查询数据表结构失败")
+		log.Error("查询数据表结构失败")
 		return map[string]interface{}{}, nil
 	}
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
-		log.Info("查询数据表类型失败")
+		log.Error("查询数据表类型失败")
 		return map[string]interface{}{}, nil
 	}
 	for i, col := range columnNames {
@@ -114,7 +114,7 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		}
 		err = rows.Scan(recordP...)
 		if err != nil {
-			log.Infof("数据表数据检索失败")
+			log.Error("数据表数据检索失败")
 			return map[string]interface{}{}, nil
 		}
 		data := make([]string, 0)
@@ -168,18 +168,18 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 
 	db, err := sql.Open("postgres", psqlconn)
 	if err != nil {
-		log.Infof("数据库连接失败，请检查配置")
+		log.Error("数据库连接失败，请检查配置")
 		return map[string]interface{}{}, nil
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+		log.Errorf("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
 	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	_, err = db.Exec(tableQueryStr)
 	if err != nil {
-		log.Infof("数据表执行sql语句失败")
+		log.Error("数据表执行sql语句失败")
 		return map[string]interface{}{}, nil
 	}
 	return map[string]interface{}{"out1": "success"}, nil
@@ -228,12 +228,12 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
 	db, err := sql.Open("postgres", psqlconn)
 	if err != nil {
-		log.Infof("数据库连接失败，请检查配置")
+		log.Error("数据库连接失败，请检查配置")
 		return err
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+		log.Errorf("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return err
 	}
 
@@ -243,7 +243,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 	mode := currentNode.Config["mode"].(string)
 	chunksize, err := strconv.Atoi(chunksizeRaw)
 	if err != nil {
-		log.Infof("chunksize设置非数值")
+		log.Error("chunksize设置非数值")
 		return err
 	}
 
@@ -260,12 +260,12 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
 		_, err := db.Exec(tableDropStr)
 		if err != nil {
-			log.Infof("删除原表失败")
+			log.Error("删除原表失败")
 			return err
 		}
 		_, err = db.Exec(tableCreateStr)
 		if err != nil {
-			log.Infof("创建表失败, 原因: %s", err.Error())
+			log.Errorf("创建表失败, 原因: %s", err.Error())
 			log.Infof("创建表sql语句: %s", tableCreateStr)
 			return err
 		}
@@ -311,7 +311,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(tableColumns, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("覆盖写入表失败")
+					log.Error("覆盖写入表失败")
 					return err
 				}
 			}
@@ -322,7 +322,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
 		colRows, err := db.Query(tableColumnStr)
 		if err != nil {
-			log.Infof("数据表检索失败, 请确认要写入的表是否存在")
+			log.Error("数据表检索失败, 请确认要写入的表是否存在")
 			return err
 		}
 		tableCols := make([]pgDataCol, 0)
@@ -331,7 +331,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			var tableCol pgDataCol
 			err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
+				log.Error("数据表检索失败, 请确认要写入的表是否存在")
 				return err
 			}
 			tableCols = append(tableCols, tableCol)
@@ -350,19 +350,19 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
 			_, err := db.Exec(tableDropStr)
 			if err != nil {
-				log.Infof("删除原表失败")
+				log.Error("删除原表失败")
 				return err
 			}
 			_, err = db.Exec(tableCreateStr)
 			if err != nil {
-				log.Infof("创建表失败, 原因: %s", err.Error())
+				log.Errorf("创建表失败, 原因: %s", err.Error())
 				log.Infof("创建表sql语句: %s", tableCreateStr)
 				return err
 			}
 			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
 			colRows, err := db.Query(tableColumnStr)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
+				log.Error("数据表检索失败, 请确认要写入的表是否存在")
 				return err
 			}
 			defer colRows.Close()
@@ -370,7 +370,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 				var tableCol pgDataCol
 				err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 				if err != nil {
-					log.Infof("数据表检索失败, 请确认要写入的表是否存在")
+					log.Error("数据表检索失败, 请确认要写入的表是否存在")
 					return err
 				}
 				tableCols = append(tableCols, tableCol)
@@ -399,7 +399,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, tablename)
 			_, err := db.Exec(tableClearStr)
 			if err != nil {
-				log.Infof("清空表失败")
+				log.Error("清空表失败")
 				return err
 			}
 		}
@@ -457,7 +457,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("追加写入表失败：%s", err.Error())
+					log.Errorf("追加写入表失败：%s", err.Error())
 					return err
 				}
 			}

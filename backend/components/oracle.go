@@ -285,13 +285,13 @@ func ReadCsvSaveToOracle(r io.Reader, currentNode Node) error {
 		tableDropStr := fmt.Sprintf("BEGIN\n   EXECUTE IMMEDIATE 'DROP TABLE %s.%s';\nEXCEPTION\n   WHEN OTHERS THEN\n      IF SQLCODE != -942 THEN\n         RAISE;\n      END IF;\nEND;", schema, tableName)
 		_, err := db.Exec(tableDropStr)
 		if err != nil {
-			log.Infof("删除原表失败%s", err.Error())
+			log.Errorf("删除原表失败%s", err.Error())
 			return err
 		}
 		_, err = db.Exec(tableCreateStr)
 		if err != nil {
 			log.Info(tableCreateStr)
-			log.Infof("创建表失败%s", err.Error())
+			log.Errorf("创建表失败%s", err.Error())
 			return err
 		}
 		//插入数据
@@ -336,7 +336,7 @@ func ReadCsvSaveToOracle(r io.Reader, currentNode Node) error {
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s", schema, tableName, strings.Join(tableColumns, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("覆盖写入表失败%s", err.Error())
+					log.Errorf("覆盖写入表失败%s", err.Error())
 					return err
 				}
 			}
@@ -375,13 +375,13 @@ func ReadCsvSaveToOracle(r io.Reader, currentNode Node) error {
 			tableDropStr := fmt.Sprintf("BEGIN\n   EXECUTE IMMEDIATE 'DROP TABLE %s.%s';\nEXCEPTION\n   WHEN OTHERS THEN\n      IF SQLCODE != -942 THEN\n         RAISE;\n      END IF;\nEND;", schema, tableName)
 			_, err := db.Exec(tableDropStr)
 			if err != nil {
-				log.Infof("删除原表失败%s", err.Error())
+				log.Errorf("删除原表失败%s", err.Error())
 				return err
 			}
 			_, err = db.Exec(tableCreateStr)
 			if err != nil {
 				log.Info(tableCreateStr)
-				log.Infof("创建表失败%s", err.Error())
+				log.Errorf("创建表失败%s", err.Error())
 				return err
 			}
 			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM all_tab_columns WHERE table_name = '%s'", tableName)
@@ -482,7 +482,7 @@ func ReadCsvSaveToOracle(r io.Reader, currentNode Node) error {
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s", schema, tableName, strings.Join(headers, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("追加写入表失败：%s", err.Error())
+					log.Errorf("追加写入表失败：%s", err.Error())
 					return err
 				}
 			}

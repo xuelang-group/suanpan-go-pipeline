@@ -256,13 +256,13 @@ func ReadCsvSaveToSQLServer(r io.Reader, currentNode Node) error {
 		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tableName)
 		_, err := db.Exec(tableDropStr)
 		if err != nil {
-			log.Infof("删除原表失败%s", err.Error())
+			log.Errorf("删除原表失败%s", err.Error())
 			return err
 		}
 		_, err = db.Exec(tableCreateStr)
 		if err != nil {
 			log.Info(tableCreateStr)
-			log.Infof("创建表失败%s", err.Error())
+			log.Errorf("创建表失败%s", err.Error())
 			return err
 		}
 		//插入数据
@@ -307,7 +307,7 @@ func ReadCsvSaveToSQLServer(r io.Reader, currentNode Node) error {
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tableName, strings.Join(tableColumns, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("覆盖写入表失败%s", err.Error())
+					log.Errorf("覆盖写入表失败%s", err.Error())
 					return err
 				}
 			}
@@ -318,7 +318,7 @@ func ReadCsvSaveToSQLServer(r io.Reader, currentNode Node) error {
 		tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s'", tableName)
 		colRows, err := db.Query(tableColumnStr)
 		if err != nil {
-			log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+			log.Errorf("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
 			return err
 		}
 		tableCols := make([]sqlServerDataCol, 0)
@@ -327,7 +327,7 @@ func ReadCsvSaveToSQLServer(r io.Reader, currentNode Node) error {
 			var tableCol sqlServerDataCol
 			err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+				log.Errorf("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
 				return err
 			}
 			tableCols = append(tableCols, tableCol)
@@ -346,19 +346,19 @@ func ReadCsvSaveToSQLServer(r io.Reader, currentNode Node) error {
 			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tableName)
 			_, err := db.Exec(tableDropStr)
 			if err != nil {
-				log.Infof("删除原表失败%s", err.Error())
+				log.Errorf("删除原表失败%s", err.Error())
 				return err
 			}
 			_, err = db.Exec(tableCreateStr)
 			if err != nil {
 				log.Info(tableCreateStr)
-				log.Infof("创建表失败%s", err.Error())
+				log.Errorf("创建表失败%s", err.Error())
 				return err
 			}
 			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s'", tableName)
 			colRows, err := db.Query(tableColumnStr)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+				log.Errorf("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
 				return err
 			}
 			defer colRows.Close()
@@ -366,7 +366,7 @@ func ReadCsvSaveToSQLServer(r io.Reader, currentNode Node) error {
 				var tableCol sqlServerDataCol
 				err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 				if err != nil {
-					log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+					log.Errorf("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
 					return err
 				}
 				tableCols = append(tableCols, tableCol)
@@ -453,7 +453,7 @@ func ReadCsvSaveToSQLServer(r io.Reader, currentNode Node) error {
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tableName, strings.Join(headers, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("追加写入表失败：%s", err.Error())
+					log.Errorf("追加写入表失败：%s", err.Error())
 					return err
 				}
 			}

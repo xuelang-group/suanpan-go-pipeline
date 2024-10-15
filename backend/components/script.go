@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-
+	"sort"
+	"strconv"
 	"github.com/go-gota/gota/dataframe"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 )
@@ -19,6 +20,7 @@ type scriptData struct {
 
 func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	inputdata := getScriptInputData(currentNode)
+	log.Infof("节点%s(%s)接收到参数 %s", currentNode.Key, currentNode.Id, inputdata)
 	// inputsStringArr := make([]string, 0)
 	// for _, inputString := range inputStrings {
 	// 	inputsStringArr = append(inputsStringArr, inputString)
@@ -30,7 +32,7 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 
 	Url, err := url.Parse("http://0.0.0.0:8080/data/?nodeid=10112&inputdata=fdsf&script=scr")
 	if err != nil {
-		log.Infof("can not run script with error: %s", err.Error())
+		log.Errorf("can not run script with error: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
 	params.Set("nodeid", nodeid)
@@ -60,17 +62,50 @@ func pyScriptMain(currentNode Node, inputData RequestData) (map[string]interface
 	outs := []scriptData{}
 	err1 := json.Unmarshal(stdout, &outs)
 	if err1 != nil {
-		log.Infof("can not solve output data with error: %s", err.Error())
+		log.Errorf("can not solve output data with error: %s", err.Error())
 		return map[string]interface{}{}, nil
 	}
 	return getScriptOutputData(outs, currentNode), nil
 }
 
+// func getScriptInputData(currentNode Node) string {
+// 	inputDatas := make([]scriptData, 0)
+// 	log.Infof("当前节点%s,  %s", currentNode.Id, currentNode.InputData)
+// 	for _, v := range currentNode.InputData {
+// 		inputData := scriptData{}
+// 		switch i := v.(type) {
+// 		case dataframe.DataFrame:
+// 			os.Mkdir(currentNode.Id, os.ModePerm)
+// 			tmpPath := currentNode.Id + "/data.csv"
+// 			os.Remove(tmpPath)
+// 			file, err := os.Create(tmpPath)
+// 			if err != nil {
+// 				log.Error("无法创建临时文件")
+// 			}
+// 			i.WriteCSV(file)
+// 			inputData.Data = tmpPath
+// 			inputData.Type = "csv"
+// 		default:
+// 			inputData.Data = i
+// 			inputData.Type = "json"
+// 		}
+// 		// inputString, _ := json.Marshal(inputData)
+// 		inputDatas = append(inputDatas, inputData)
+// 	}
+// 	inputString, _ := json.Marshal(inputDatas)
+// 	return string(inputString)
+// }
+
 func getScriptInputData(currentNode Node) string {
-	inputDatas := make([]scriptData, 0)
-	for _, v := range currentNode.InputData {
+	keys := make([]string, 0, len(currentNode.InputData))
+	for k, _ := range currentNode.InputData {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	inputDatas := make([]scriptData, len(currentNode.InputData))
+	for _, k := range keys {
 		inputData := scriptData{}
-		switch i := v.(type) {
+		switch i := currentNode.InputData[k].(type) {
 		case dataframe.DataFrame:
 			os.Mkdir(currentNode.Id, os.ModePerm)
 			tmpPath := currentNode.Id + "/data.csv"
@@ -87,7 +122,10 @@ func getScriptInputData(currentNode Node) string {
 			inputData.Type = "json"
 		}
 		// inputString, _ := json.Marshal(inputData)
-		inputDatas = append(inputDatas, inputData)
+		numStr := k[2:] // 从第3个字符开始截取
+		if num, err := strconv.Atoi(numStr); err == nil {
+			inputDatas[num-1] = inputData
+		}
 	}
 	inputString, _ := json.Marshal(inputDatas)
 	return string(inputString)

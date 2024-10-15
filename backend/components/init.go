@@ -130,7 +130,7 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 			currentNode.Status = 1
 			outputData, err := currentNode.main(currentNode, inputData)
 			if err != nil {
-				log.Infof("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
+				log.Errorf("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
 				currentNode.Status = -1
 				if server != nil {
 					server.BroadcastToNamespace("/", "notify.process.status", map[string]int{currentNode.Id: -1})
@@ -195,7 +195,7 @@ func UpdateInput(currentNode Node, inputData RequestData, wg *sync.WaitGroup, st
 	default:
 		err := currentNode.loadInput(currentNode, inputData)
 		if err != nil {
-			log.Infof("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
+			log.Errorf("Error occur when running node: %s, error info: %s", currentNode.Key, err.Error())
 		}
 	}
 }
@@ -217,7 +217,7 @@ func loadParameter(parameter string, vars map[string]interface{}) string {
 	paramT := template.New("parameterLoader")
 	paramT, err := paramT.Parse(parameter)
 	if err != nil {
-		log.Infof("无法正常载入参数：%s", parameter)
+		log.Errorf("无法正常载入参数：%s", parameter)
 		return parameter
 	}
 	var result bytes.Buffer

@@ -36,7 +36,7 @@ func FindPort(host string, ports []string) string {
 		}
 		if conn != nil {
 			defer conn.Close()
-			log.Infof("Port %s is not available, try next port.", port)
+			log.Errorf("Port %s is not available, try next port.", port)
 		}
 	}
 	return availablePort

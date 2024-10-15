@@ -48,7 +48,7 @@ func loadInput(currentNode Node, inputData string) map[string]interface{} {
 	case "csv":
 		return map[string]interface{}{"out1": csvFileDownload(inputData, currentNode.Id)}
 	case "image":
-		log.Infof("not support image")
+		log.Errorf("not support image")
 		fallthrough
 	case "bool":
 		if inputData == "true" {
@@ -109,7 +109,7 @@ func saveOutputData(currentNode Node, inputData RequestData) string {
 	case "csv":
 		return csvFileUpload(currentNode, inputData)
 	case "image":
-		log.Infof("not support image")
+		log.Errorf("not support image")
 		fallthrough
 	case "bool":
 		output, _ := json.Marshal(currentNode.InputData["in1"])

@@ -152,18 +152,18 @@ func hiveExecutorMain(currentNode Node, inputData RequestData) (map[string]inter
 		currentNode.Config["dbname"].(string))
 	db, err := sql.Open("hive", hiveConn)
 	if err != nil {
-		log.Infof("数据库连接失败，请检查配置")
+		log.Error("数据库连接失败，请检查配置")
 		return map[string]interface{}{}, nil
 	}
 	defer db.Close()
 	if err = db.Ping(); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置")
+		log.Error("数据库测试连接失败，请检查配置")
 		return map[string]interface{}{}, nil
 	}
 	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	_, err = db.Exec(tableQueryStr)
 	if err != nil {
-		log.Infof("数据表执行sql语句失败")
+		log.Error("数据表执行sql语句失败")
 		return map[string]interface{}{}, nil
 	}
 	return map[string]interface{}{"out1": "success"}, nil
@@ -248,13 +248,13 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s", tableName)
 		_, err := db.Exec(tableDropStr)
 		if err != nil {
-			log.Infof("删除原表失败%s", err.Error())
+			log.Errorf("删除原表失败%s", err.Error())
 			return err
 		}
 		_, err = db.Exec(tableCreateStr)
 		if err != nil {
 			log.Info(tableCreateStr)
-			log.Infof("创建表失败%s", err.Error())
+			log.Errorf("创建表失败%s", err.Error())
 			return err
 		}
 		//插入数据
@@ -299,7 +299,7 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s;", tableName, strings.Join(tableColumns, ","), tableInsertValues)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("覆盖写入表失败%s", err.Error())
+					log.Errorf("覆盖写入表失败%s", err.Error())
 					return err
 				}
 			}
@@ -310,7 +310,7 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 		tableColumnStr := fmt.Sprintf("Describe %s;", tableName)
 		colRows, err := db.Query(tableColumnStr)
 		if err != nil {
-			log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+			log.Errorf("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
 			return err
 		}
 		tableCols := make([]hiveDataCol, 0)
@@ -319,7 +319,7 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 			var tableCol hiveDataCol
 			err = colRows.Scan(&tableCol.Name, &tableCol.Type, &tableCol.Comment)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+				log.Errorf("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
 				return err
 			}
 			tableCols = append(tableCols, tableCol)
@@ -338,19 +338,19 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s", tableName)
 			_, err := db.Exec(tableDropStr)
 			if err != nil {
-				log.Infof("删除原表失败%s", err.Error())
+				log.Errorf("删除原表失败%s", err.Error())
 				return err
 			}
 			_, err = db.Exec(tableCreateStr)
 			if err != nil {
 				log.Info(tableCreateStr)
-				log.Infof("创建表失败%s", err.Error())
+				log.Errorf("创建表失败%s", err.Error())
 				return err
 			}
 			tableColumnStr = fmt.Sprintf("Describe '%s'", tableName)
 			colRows, err := db.Query(tableColumnStr)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+				log.Errorf("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
 				return err
 			}
 			defer colRows.Close()
@@ -358,7 +358,7 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 				var tableCol hiveDataCol
 				err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 				if err != nil {
-					log.Infof("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
+					log.Errorf("数据表检索失败, 请确认要写入的表是否存在, %s", err.Error())
 					return err
 				}
 				tableCols = append(tableCols, tableCol)
@@ -446,7 +446,7 @@ func ReadCsvSaveToHive(r io.Reader, currentNode Node) error {
 				log.Info(tableInsertStr)
 				_, err := db.Exec(tableInsertStr)
 				if err != nil {
-					log.Infof("追加写入表失败：%s", err.Error())
+					log.Errorf("追加写入表失败：%s", err.Error())
 					return err
 				}
 			}
