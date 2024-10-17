@@ -139,7 +139,7 @@ func RunWeb(appType string) {
 	})
 
 	server.OnError("/", func(s socketio.Conn, e error) {
-		log.Errorf("meet error: %s", e)
+		log.Infof("meet error: %s", e)
 	})
 
 	server.OnDisconnect("/", func(s socketio.Conn, msg string) {
@@ -148,7 +148,7 @@ func RunWeb(appType string) {
 
 	go func() {
 		if err := server.Serve(); err != nil {
-			log.Errorf("socketio listen error: %s\n", err)
+			log.Infof("socketio listen error: %s\n", err)
 		}
 	}()
 	defer server.Close()
