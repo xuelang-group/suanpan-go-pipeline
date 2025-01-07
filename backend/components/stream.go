@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -25,43 +26,44 @@ func streamInMain(currentNode Node, inputData RequestData) (map[string]interface
 		return map[string]interface{}{}, nil
 	}
 	if len(inputData.Data) > 0 {
-		return loadInput(currentNode, inputData.Data), nil
+		return loadInput(currentNode, inputData.Data)
 	} else {
 		if currentNode.InputData["in1"] == nil {
 			return map[string]interface{}{}, nil
 		}
-		return loadInput(currentNode, currentNode.InputData["in1"].(string)), nil
+		return loadInput(currentNode, currentNode.InputData["in1"].(string))
 	}
 }
 
-func loadInput(currentNode Node, inputData string) map[string]interface{} {
+func loadInput(currentNode Node, inputData string) (map[string]interface{}, error) {
 	switch currentNode.Config["subtype"] {
 	case "string":
-		return map[string]interface{}{"out1": inputData}
+		return map[string]interface{}{"out1": inputData}, nil
 	case "number":
 		inputFloat, _ := strconv.ParseFloat(inputData, 32)
-		return map[string]interface{}{"out1": inputFloat}
+		return map[string]interface{}{"out1": inputFloat}, nil
 	case "json":
 		var v interface{}
 		json.Unmarshal([]byte(inputData), &v)
-		return map[string]interface{}{"out1": v}
+		return map[string]interface{}{"out1": v}, nil
 	case "csv":
-		return map[string]interface{}{"out1": csvFileDownload(inputData, currentNode.Id)}
+		csvPath, csvError := csvFileDownload(inputData, currentNode.Id)
+		return map[string]interface{}{"out1": csvPath}, csvError
 	case "image":
 		log.Errorf("not support image")
 		fallthrough
 	case "bool":
 		if inputData == "true" {
-			return map[string]interface{}{"out1": true}
+			return map[string]interface{}{"out1": true}, nil
 		} else {
-			return map[string]interface{}{"out1": false}
+			return map[string]interface{}{"out1": false}, nil
 		}
 	case "array":
 		var v []interface{}
 		json.Unmarshal([]byte(inputData), &v)
-		return map[string]interface{}{"out1": v}
+		return map[string]interface{}{"out1": v}, nil
 	default:
-		return map[string]interface{}{"out1": inputData}
+		return map[string]interface{}{"out1": inputData}, nil
 	}
 }
 
@@ -129,11 +131,21 @@ func csvFileUpload(currentNode Node, inputData RequestData) string {
 	return tmpKey
 }
 
-func csvFileDownload(data string, id string) string {
+func csvFileDownload(data string, id string) (string, error) {
 	args := config.GetArgs()
 	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], data, id, "data.csv")
 	tmpKey := path.Join(data, "data.csv")
 	os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
-	storage.FGetObject(tmpKey, tmpPath)
-	return tmpPath
+
+	var storageErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		storageErr = storage.FGetObject(tmpKey, tmpPath)
+		if storageErr == nil {
+			return tmpPath, nil
+		}
+
+		log.Infof("Can not download file: %s, with error: %s, retry download: %d", tmpKey, storageErr.Error(), attempt+1)
+		time.Sleep(1 * time.Second)
+	}
+	return tmpPath, storageErr
 }
