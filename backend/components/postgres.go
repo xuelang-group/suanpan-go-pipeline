@@ -403,6 +403,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 				return err
 			}
 		}
+		
 		//插入数据
 		l := len(records) - 1
 		n := l/chunksize + 1
@@ -455,7 +456,17 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
-				_, err := db.Exec(tableInsertStr)
+				var err error
+				for attempt := 0; attempt < 3; attempt++ {
+					startTime := time.Now().Format("2006-01-02 15:04:05")
+					_, err = db.Exec(tableInsertStr)
+					if err == nil {
+						break
+					}
+					endTime := time.Now().Format("2006-01-02 15:04:05")
+					log.Infof("追加写入表失败：: %s, 重试执行: %d, 追加写入开始时间: %s, 结束时间: %s", err.Error(), attempt+1, startTime, endTime)
+					time.Sleep(1 * time.Second)
+				}
 				if err != nil {
 					log.Errorf("追加写入表失败：%s", err.Error())
 					return err
