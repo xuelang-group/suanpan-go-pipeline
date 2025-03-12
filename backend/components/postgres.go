@@ -365,6 +365,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 				tableInsertArr = append(tableInsertArr, rowTmpStr)
 			}
 
+			log.Infof("当前节点%s处理后数据%d条", currentNode.Id, len(tableInsertArr))
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableColumns := make([]string, 0)
@@ -378,6 +379,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 					log.Infof("覆盖写入表失败")
 					return err
 				}
+				log.Infof("当前节点%s写入数据库成功", currentNode.Id)
 			}
 			if err == io.EOF {
 				return nil
