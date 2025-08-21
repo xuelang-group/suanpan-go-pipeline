@@ -188,7 +188,9 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 									if strings.HasSuffix(dataString, ".csv") {
 										basename := path.Base(dataString)
 										dst := strings.Replace(dataString, basename, "data_"+currentNode.NextNodes[i].Id+".csv", -1)
-										utils.CopyFile(dataString, dst)
+										if _, err := utils.CopyFile(dataString, dst); err != nil {
+											log.Errorf("数据下发时复制文件异常: %v", err)
+										}
 										tmpData = dst
 									}
 								}
@@ -205,7 +207,7 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 							_, err := os.Stat(dataString)
 							if err == nil {
 								err = os.Remove(dataString)
-								if err != nil {
+								if err != nil && !os.IsNotExist(err) {
 									log.Errorf("Can not remove csv file: %s, with error: %s", dataString, err.Error())
 								}
 							}
@@ -213,10 +215,11 @@ func Run(currentNode Node, inputData RequestData, wg *sync.WaitGroup, stopChan c
 					}
 				}
 				for i := range currentNode.NextNodes {
-					if utils.SlicesContain(readyToRun, currentNode.NextNodes[i].Id) {
-						currentNode.NextNodes[i].TriggeredPorts = triggeredPorts[currentNode.NextNodes[i].Id]
+					nextNode := currentNode.NextNodes[i]
+					if utils.SlicesContain(readyToRun, nextNode.Id) {
+						nextNode.TriggeredPorts = triggeredPorts[nextNode.Id]
 						wg.Add(1)
-						go currentNode.NextNodes[i].Run(*currentNode.NextNodes[i], RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server, runtimeErr)
+						go nextNode.Run(*nextNode, RequestData{ID: inputData.ID, Extra: inputData.Extra}, wg, stopChan, server, runtimeErr)
 					}
 				}
 				currentNode.Status = 0
