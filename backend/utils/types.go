@@ -14,6 +14,11 @@ type GraphConfig struct {
 	Connectors []Connector  `json:"connectors"`
 }
 
+type GraphParam struct {
+	AppMode    string   `json:"appMode"`
+}
+
+
 type NodeConfig struct {
 	Uuid       string          `json:"uuid"`
 	Puuit      string          `json:"puuid"`

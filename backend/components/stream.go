@@ -8,12 +8,40 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/storage"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/stream"
 )
+
+type idCounter struct {
+	mu     sync.Mutex
+	counters map[string]int
+}
+
+var idCtr = &idCounter{
+	counters: make(map[string]int),
+}
+
+func (c *idCounter) nextIndex(id string) int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if _, exists := c.counters[id]; !exists {
+		c.counters[id] = 0
+		return 0
+	}
+
+	c.counters[id]++
+	if c.counters[id] >= 10 {
+		c.counters[id] = 0
+	}
+
+	return c.counters[id]
+}
+
 
 func streamInLoadInput(currentNode Node, inputData RequestData) error {
 	currentNode.InputData["in1"] = inputData.Data
@@ -131,7 +159,10 @@ func csvFileUpload(currentNode Node, inputData RequestData) string {
 
 func csvFileDownload(data string, id string) string {
 	args := config.GetArgs()
-	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], id, "data.csv")
+	pathIndex := idCtr.nextIndex(id)
+	pathWithIndex := fmt.Sprintf("%s/%d", id, pathIndex)
+	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], pathWithIndex, "data.csv")
+	log.Infof(tmpPath)
 	tmpKey := path.Join(data, "data.csv")
 	os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
 	storage.FGetObject(tmpKey, tmpPath)

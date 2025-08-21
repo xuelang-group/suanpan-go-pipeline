@@ -35,6 +35,9 @@ type Graph struct {
 	runtimeErr error
 	path       string
 	key        string
+	GraphParam utils.GraphParam
+	modePath   string
+	modeKey        string
 }
 
 func (g *Graph) Init(appType string, appMode string) {
@@ -42,16 +45,21 @@ func (g *Graph) Init(appType string, appMode string) {
 	e := config.GetEnv()
 	// 获取命令行参数
 	args := config.GetArgs()
+	g.GraphParam.AppMode = appMode
 	g.path = path.Join(args["--storage-oss-temp-store"], "studio", e.SpUserId, "configs", e.SpAppId, e.SpNodeId, "graph.json")
 	g.key = strings.Join([]string{"studio", e.SpUserId, "configs", e.SpAppId, e.SpNodeId, "graph.json"}, "/")
+	g.modePath = path.Join(args["--storage-oss-temp-store"], "studio", e.SpUserId, "configs", e.SpAppId, e.SpNodeId, "param.json")
+	g.modeKey = strings.Join([]string{"studio", e.SpUserId, "configs", e.SpAppId, e.SpNodeId, "param.json"}, "/")
 	g.componentsInit(appType)
 	g.graphInit()
+	g.paramInit()
 	g.nodesInit()
 	// g.Initialize()
 	variables.GlobalVariables = make(map[string]interface{})
-	if appMode != "edit" {
+	if g.GraphParam.AppMode != "edit" {
 		g.Status = 1
 	}
+	log.Infof("当前画布状态：%d", g.Status)
 }
 
 func (g *Graph) graphInit() {
@@ -72,6 +80,24 @@ func (g *Graph) graphInit() {
 		log.Info(fmt.Sprintf("Successfully Loaded Config File %s.", g.path))
 	}
 }
+
+func (g *Graph) paramInit() {
+	os.MkdirAll(filepath.Dir(g.modePath), os.ModePerm)
+	err := storage.FGetObject(g.modeKey, g.modePath)
+	if err != nil {
+		log.Info("Fail to Load Param File, init with default value...")
+	} else {
+		jsonFile, err := os.Open(g.modePath)
+		if err != nil {
+			log.Info(err.Error())
+		}
+		defer jsonFile.Close()
+		byteValue, _ := io.ReadAll(jsonFile)
+		json.Unmarshal(byteValue, &g.GraphParam)
+		log.Info(fmt.Sprintf("Successfully Loaded Param File %s.", g.modePath))
+	}
+}
+
 
 func (g *Graph) nodesInit() {
 	for _, nodeConfig := range g.Config.Nodes {
@@ -186,6 +212,14 @@ func (g *Graph) Update(newGraph utils.GraphConfig) {
 	g.Nodes = []components.Node{}
 	g.nodesInit()
 	// g.Initialize()
+}
+
+func (g *Graph) ParamUpdate() {
+	os.Remove(g.modePath)
+	dataJson, _ := json.Marshal(g.GraphParam)
+	os.MkdirAll(filepath.Dir(g.modePath), os.ModePerm)
+	os.WriteFile(g.modePath, dataJson, 0644)
+	storage.FPutObject(g.modeKey, g.modePath)
 }
 
 func (g *Graph) Release() {

@@ -127,10 +127,13 @@ func RunWeb(appType string) {
 		if graph.GraphInst.Status == 0 {
 			services.ServicesManager.Release()
 			graph.GraphInst.Release()
+			graph.GraphInst.GraphParam.AppMode = "edit"
 		} else {
 			services.ServicesManager.Deploy(&graph.GraphInst)
 			graph.GraphInst.Initialize()
+			graph.GraphInst.GraphParam.AppMode = "deploy"
 		}
+		graph.GraphInst.ParamUpdate()
 		return RespondMsg{true, graph.GraphInst.Status}
 	})
 

@@ -218,12 +218,15 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 		return map[string]interface{}{}, nil
 	}
 	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+    defer cancel()
+	queryTime := time.Now()
 	_, err = pool.Exec(ctx, tableQueryStr)
 	if err != nil {
 		log.Infof("%s 数据库执行sql语句失败", currentNode.Id)
 		return map[string]interface{}{}, nil
 	}
+	log.Infof("当前节点 %s 执行sql语句成功, 耗时: %dms", currentNode.Id, time.Since(queryTime).Milliseconds())
 	return map[string]interface{}{"out1": "success"}, nil
 }
 
@@ -320,7 +323,8 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 	schema := currentNode.Config["databaseChoose"].(string)
 	mode := currentNode.Config["mode"].(string)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
 	if strings.Compare(mode, "replace") == 0 {
 		//新建表
 		tableSchemaArr := make([]string, 0)
@@ -332,16 +336,21 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableSchemaStr)
 		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
 
+		dropTime := time.Now()
 		_, err := pool.Exec(ctx, tableDropStr)
 		if err != nil {
 			log.Infof("删除原表失败")
 			return err
 		}
+		log.Infof("当前节点%s删除原表成功, 耗时: %dms", currentNode.Id, time.Since(dropTime).Milliseconds())
+		
+		createTime := time.Now()
 		_, err = pool.Exec(ctx, tableCreateStr)
 		if err != nil {
 			log.Infof("创建表失败")
 			return err
 		}
+		log.Infof("当前节点%s创建表成功, 耗时: %dms", currentNode.Id, time.Since(createTime).Milliseconds())
 
 		for {
 			records, err := readBatch(csvReader, chunksize)
@@ -374,12 +383,13 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 
 				}
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(tableColumns, ","), tableInsertValues)
+				insertStart := time.Now()
 				_, err := pool.Exec(ctx, tableInsertStr)
 				if err != nil {
 					log.Infof("覆盖写入表失败")
 					return err
 				}
-				log.Infof("当前节点%s写入数据库成功", currentNode.Id)
+				log.Infof("当前节点%s写入%d条数据库成功, 耗时: %dms", currentNode.Id, len(tableInsertArr), time.Since(insertStart).Milliseconds())
 			}
 			if err == io.EOF {
 				return nil
@@ -416,16 +426,20 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			tableSchemaStr := strings.Join(tableSchemaArr, ",")
 			tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableSchemaStr)
 			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
+			dropTime := time.Now()
 			_, err := pool.Exec(ctx, tableDropStr)
 			if err != nil {
 				log.Infof("删除原表失败")
 				return err
 			}
+			log.Infof("当前节点%s删除原表成功, 耗时: %dms", currentNode.Id, time.Since(dropTime).Milliseconds())
+			createTime := time.Now()
 			_, err = pool.Exec(ctx, tableCreateStr)
 			if err != nil {
 				log.Infof("创建表失败")
 				return err
 			}
+			log.Infof("当前节点%s创建表成功, 耗时: %dms", currentNode.Id, time.Since(createTime).Milliseconds())
 			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
 			colRows, err := pool.Query(ctx, tableColumnStr)
 			if err != nil {
@@ -463,12 +477,14 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		}
 		if strings.Compare(mode, "clearAndAppend") == 0 {
 			log.Infof("开始清空并追加")
+			clearStart := time.Now()
 			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, tablename)
 			_, err := pool.Exec(ctx, tableClearStr)
 			if err != nil {
 				log.Infof("清空表失败")
 				return err
 			}
+			log.Infof("当前节点%s清空表成功, 耗时: %dms", currentNode.Id, time.Since(clearStart).Milliseconds())
 		}
 		for {
 			records, err := readBatch(csvReader, chunksize)
@@ -502,6 +518,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			}
 
 			if len(tableInsertArr) > 0 {
+				insertStart := time.Now()
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
 				_, err := pool.Exec(ctx, tableInsertStr)
@@ -509,6 +526,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 					log.Infof("追加写入表失败\n执行SQL为：%s\n具体报错为：%s", tableInsertStr, err.Error())
 					return err
 				}
+				log.Infof("当前节点%s写入%d条数据库成功, 耗时: %dms", currentNode.Id, len(tableInsertArr), time.Since(insertStart).Milliseconds())
 			}
 			if err == io.EOF {
 				return nil
