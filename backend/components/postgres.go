@@ -223,7 +223,7 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 	queryTime := time.Now()
 	_, err = pool.Exec(ctx, tableQueryStr)
 	if err != nil {
-		log.Infof("%s 数据库执行sql语句失败", currentNode.Id)
+		log.Infof("%s 数据库执行sql语句失败, 原因: %s", currentNode.Id, err.Error())
 		return map[string]interface{}{}, nil
 	}
 	log.Infof("当前节点 %s 执行sql语句成功, 耗时: %dms", currentNode.Id, time.Since(queryTime).Milliseconds())
@@ -323,7 +323,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 	schema := currentNode.Config["databaseChoose"].(string)
 	mode := currentNode.Config["mode"].(string)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Minute)
 	defer cancel()
 	if strings.Compare(mode, "replace") == 0 {
 		//新建表
@@ -339,7 +339,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		dropTime := time.Now()
 		_, err := pool.Exec(ctx, tableDropStr)
 		if err != nil {
-			log.Infof("删除原表失败")
+			log.Infof("删除原表失败, 原因: %s", err.Error())
 			return err
 		}
 		log.Infof("当前节点%s删除原表成功, 耗时: %dms", currentNode.Id, time.Since(dropTime).Milliseconds())
@@ -347,7 +347,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		createTime := time.Now()
 		_, err = pool.Exec(ctx, tableCreateStr)
 		if err != nil {
-			log.Infof("创建表失败")
+			log.Infof("创建表失败, 原因: %s", err.Error())
 			return err
 		}
 		log.Infof("当前节点%s创建表成功, 耗时: %dms", currentNode.Id, time.Since(createTime).Milliseconds())
@@ -386,7 +386,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 				insertStart := time.Now()
 				_, err := pool.Exec(ctx, tableInsertStr)
 				if err != nil {
-					log.Infof("覆盖写入表失败")
+					log.Infof("覆盖写入表失败, 原因: %s", err.Error())
 					return err
 				}
 				log.Infof("当前节点%s写入%d条数据库成功, 耗时: %dms", currentNode.Id, len(tableInsertArr), time.Since(insertStart).Milliseconds())
@@ -429,21 +429,21 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			dropTime := time.Now()
 			_, err := pool.Exec(ctx, tableDropStr)
 			if err != nil {
-				log.Infof("删除原表失败")
+				log.Infof("删除原表失败, 原因: %s", err.Error())
 				return err
 			}
 			log.Infof("当前节点%s删除原表成功, 耗时: %dms", currentNode.Id, time.Since(dropTime).Milliseconds())
 			createTime := time.Now()
 			_, err = pool.Exec(ctx, tableCreateStr)
 			if err != nil {
-				log.Infof("创建表失败")
+				log.Infof("创建表失败, 原因: %s", err.Error())
 				return err
 			}
 			log.Infof("当前节点%s创建表成功, 耗时: %dms", currentNode.Id, time.Since(createTime).Milliseconds())
 			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
 			colRows, err := pool.Query(ctx, tableColumnStr)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在")
+				log.Infof("数据表检索失败, 请确认要写入的表是否存在, 原因: %s", err.Error())
 				return err
 			}
 			defer colRows.Close()
@@ -451,7 +451,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 				var tableCol pgDataCol
 				err = colRows.Scan(&tableCol.Name, &tableCol.Type)
 				if err != nil {
-					log.Infof("数据表检索失败, 请确认要写入的表是否存在")
+					log.Infof("数据表检索失败, 请确认要写入的表是否存在, 原因: %s", err.Error())
 					return err
 				}
 				tableCols = append(tableCols, tableCol)
@@ -481,7 +481,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, tablename)
 			_, err := pool.Exec(ctx, tableClearStr)
 			if err != nil {
-				log.Infof("清空表失败")
+				log.Infof("清空表失败, 原因: %s", err.Error())
 				return err
 			}
 			log.Infof("当前节点%s清空表成功, 耗时: %dms", currentNode.Id, time.Since(clearStart).Milliseconds())
