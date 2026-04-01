@@ -54,10 +54,10 @@ func (g *Graph) Init(appType string, appMode string) {
 	g.graphInit()
 	g.paramInit()
 	g.nodesInit()
-	// g.Initialize()
 	variables.GlobalVariables = make(map[string]interface{})
 	if g.GraphParam.AppMode != "edit" {
 		g.Status = 1
+		g.Initialize()
 	}
 	log.Infof("当前画布状态：%d", g.Status)
 }

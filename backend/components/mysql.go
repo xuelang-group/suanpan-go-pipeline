@@ -1,6 +1,7 @@
 package components
 
 import (
+	"context"
 	"database/sql"
 	"encoding/csv"
 	"errors"
@@ -31,30 +32,63 @@ type mysqlDB struct {
 }
 
 func mysqlInit(currentNode Node) error {
-	mysqlDataType := map[string]string{"bigint": "int64", "bigserial": "int64",
-		"boolean": "bool", "bytea": "[]uint8", "date": "time.Time",
-		"integer": "int32", "smallint": "int16", "smallserial": "int16",
-		"serial": "int32", "text": "string", "time without time zone": "time.Time",
-		"time with time zone": "time.Time", "timestamp without time zone": "time.Time",
-		"timestamp with time zone": "time.Time", "double precision": "float64", "numeric": "float64"}
+	// MySQL 数据类型映射（修复前是 PostgreSQL 类型）
+	mysqlDataType := map[string]string{
+		// 整数类型
+		"tinyint": "int8", "smallint": "int16", "int": "int32", "integer": "int32",
+		"bigint": "int64",
+		// 浮点类型
+		"float": "float32", "double": "float64", "decimal": "float64", "numeric": "float64",
+		// 日期时间类型
+		"date": "time.Time", "datetime": "time.Time", "timestamp": "time.Time",
+		"time": "time.Time", "year": "int32",
+		// 字符串类型
+		"char": "string", "varchar": "string", "text": "string",
+		// 二进制类型
+		"binary": "[]uint8", "varbinary": "[]uint8", "blob": "[]uint8", "tinyblob": "[]uint8",
+		"mediumblob": "[]uint8", "longblob": "[]uint8",
+		// 布尔类型（MySQL 5.0+ 用 tinyint(1) 表示）
+		"bool": "bool", "boolean": "bool",
+		// JSON 类型（MySQL 5.7.8+）
+		"json": "string",
+	}
 	currentNode.Config["mysqlDataType"] = mysqlDataType
 	currentNode.Config["mysqlDB"] = &mysqlDB{l: new(sync.Mutex)}
 	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
 	go func() {
-		mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
+		// 设置超时参数：timeout=5s 表示连接超时5秒，readTimeout=10s 表示读超时10秒
+		mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&timeout=5s&readTimeout=10s&writeTimeout=10s",
+			currentNode.Config["user"].(string),
+			currentNode.Config["password"].(string),
+			currentNode.Config["host"].(string),
+			currentNode.Config["port"].(string),
+			currentNode.Config["dbname"].(string))
+
 		db, err := sql.Open("mysql", mysqluri)
 		if err != nil {
 			log.Errorf("Mysql组件(%s)初始化数据库连接失败，请检查配置: %s", currentNode.Id, err.Error())
 			currentNode.Config["mysqlConfigFail"] = true
-		} else {
-			currentNode.Config["mysqlConfigFail"] = false
+			currentNode.Config["mysqlDB"].(*mysqlDB).db = nil
+			defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+			return
 		}
-		if err = db.Ping(); err != nil {
+
+		// 设置 Ping 超时
+		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+		defer cancel()
+
+		if err = db.PingContext(ctx); err != nil {
 			log.Errorf("Mysql组件(%s)数据库测试连接失败，请检查配置, 具体原因为: %s", currentNode.Id, err.Error())
 			currentNode.Config["mysqlConfigFail"] = true
+			currentNode.Config["mysqlDB"].(*mysqlDB).db = nil
+			defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+			return
 		}
+
+		currentNode.Config["mysqlConfigFail"] = false
 		currentNode.Config["mysqlDB"].(*mysqlDB).db = db
 		defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+		log.Infof("Mysql组件(%s)数据库连接初始化成功", currentNode.Id)
 	}()
 	return nil
 }
@@ -77,35 +111,66 @@ func mysqlRlease(currentNode Node) error {
 func rebuildMysqlConnection(currentNode Node) error {
 	log.Infof("Mysql组件(%s)尝试重新建立链接", currentNode.Id)
 	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
-	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["dbname"].(string))
+	defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+
+	// 设置超时参数
+	mysqluri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&timeout=5s&readTimeout=10s&writeTimeout=10s",
+		currentNode.Config["user"].(string),
+		currentNode.Config["password"].(string),
+		currentNode.Config["host"].(string),
+		currentNode.Config["port"].(string),
+		currentNode.Config["dbname"].(string))
+
 	db, err := sql.Open("mysql", mysqluri)
 	if err != nil {
 		log.Errorf("Mysql组件(%s)初始化数据库连接失败，请检查配置: %s", currentNode.Id, err.Error())
 		currentNode.Config["mysqlConfigFail"] = true
+		currentNode.Config["mysqlDB"].(*mysqlDB).db = nil
 		return err
-	} else {
-		currentNode.Config["mysqlConfigFail"] = false
 	}
-	if err = db.Ping(); err != nil {
+
+	// 设置 Ping 超时
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	defer cancel()
+
+	if err = db.PingContext(ctx); err != nil {
 		log.Errorf("Mysql组件(%s)数据库测试连接失败，请检查配置, 具体原因为: %s", currentNode.Id, err.Error())
 		currentNode.Config["mysqlConfigFail"] = true
+		currentNode.Config["mysqlDB"].(*mysqlDB).db = nil
 		return err
 	}
+
+	currentNode.Config["mysqlConfigFail"] = false
 	currentNode.Config["mysqlDB"].(*mysqlDB).db = db
-	defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+	log.Infof("Mysql组件(%s)重新建立链接成功", currentNode.Id)
 	return nil
 }
 
 func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	if currentNode.Config["mysqlConfigFail"].(bool) {
+	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+	defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+
+	// 等待异步初始化完成（确保 db 和 mysqlConfigFail 已被设置）
+	db := currentNode.Config["mysqlDB"].(*mysqlDB).db
+	if db == nil {
+		// 异步初始化还未完成或失败了，手动初始化
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
 		err := rebuildMysqlConnection(currentNode)
 		if err != nil {
 			return map[string]interface{}{}, err
 		}
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+		db = currentNode.Config["mysqlDB"].(*mysqlDB).db
+	} else if v, ok := currentNode.Config["mysqlConfigFail"].(bool); ok && v {
+		// 之前连接失败，尝试重建
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+		err := rebuildMysqlConnection(currentNode)
+		if err != nil {
+			return map[string]interface{}{}, err
+		}
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+		db = currentNode.Config["mysqlDB"].(*mysqlDB).db
 	}
-	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
-	defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
-	db := currentNode.Config["mysqlDB"].(*mysqlDB).db
 	tableCols := make([]mysqlDataCol, 0)
 	tableQueryStr := ""
 	if len(currentNode.Config["sql"].(string)) == 0 {
@@ -218,15 +283,30 @@ func mysqlReaderMain(currentNode Node, inputData RequestData) (map[string]interf
 }
 
 func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	if currentNode.Config["mysqlConfigFail"].(bool) {
+	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+	defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+
+	// 等待异步初始化完成（确保 db 和 mysqlConfigFail 已被设置）
+	db := currentNode.Config["mysqlDB"].(*mysqlDB).db
+	if db == nil {
+		// 异步初始化还未完成或失败了，手动初始化
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
 		err := rebuildMysqlConnection(currentNode)
 		if err != nil {
 			return map[string]interface{}{}, err
 		}
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+		db = currentNode.Config["mysqlDB"].(*mysqlDB).db
+	} else if v, ok := currentNode.Config["mysqlConfigFail"].(bool); ok && v {
+		// 之前连接失败，尝试重建
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+		err := rebuildMysqlConnection(currentNode)
+		if err != nil {
+			return map[string]interface{}{}, err
+		}
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+		db = currentNode.Config["mysqlDB"].(*mysqlDB).db
 	}
-	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
-	defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
-	db := currentNode.Config["mysqlDB"].(*mysqlDB).db
 	tableCols := make([]mysqlDataCol, 0)
 	tableQueryStr := ""
 	if len(currentNode.Config["sql"].(string)) == 0 {
@@ -322,15 +402,30 @@ func mysqlJsonReaderMain(currentNode Node, inputData RequestData) (map[string]in
 }
 
 func mysqlExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	if currentNode.Config["mysqlConfigFail"].(bool) {
+	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+	defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+
+	// 等待异步初始化完成（确保 db 和 mysqlConfigFail 已被设置）
+	db := currentNode.Config["mysqlDB"].(*mysqlDB).db
+	if db == nil {
+		// 异步初始化还未完成或失败了，手动初始化
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
 		err := rebuildMysqlConnection(currentNode)
 		if err != nil {
 			return map[string]interface{}{}, err
 		}
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+		db = currentNode.Config["mysqlDB"].(*mysqlDB).db
+	} else if v, ok := currentNode.Config["mysqlConfigFail"].(bool); ok && v {
+		// 之前连接失败，尝试重建
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+		err := rebuildMysqlConnection(currentNode)
+		if err != nil {
+			return map[string]interface{}{}, err
+		}
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+		db = currentNode.Config["mysqlDB"].(*mysqlDB).db
 	}
-	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
-	defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
-	db := currentNode.Config["mysqlDB"].(*mysqlDB).db
 	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
 	_, err := db.Exec(tableQueryStr)
 	if err != nil {
@@ -384,15 +479,30 @@ func ReadCsvToMySql(r io.Reader, currentNode Node) error {
 		return err
 	}
 
-	if currentNode.Config["mysqlConfigFail"].(bool) {
+	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+	defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+
+	// 等待异步初始化完成（确保 db 和 mysqlConfigFail 已被设置）
+	db := currentNode.Config["mysqlDB"].(*mysqlDB).db
+	if db == nil {
+		// 异步初始化还未完成或失败了，手动初始化
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
 		err := rebuildMysqlConnection(currentNode)
 		if err != nil {
 			return err
 		}
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+		db = currentNode.Config["mysqlDB"].(*mysqlDB).db
+	} else if v, ok := currentNode.Config["mysqlConfigFail"].(bool); ok && v {
+		// 之前连接失败，尝试重建
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
+		err := rebuildMysqlConnection(currentNode)
+		if err != nil {
+			return err
+		}
+		currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
+		db = currentNode.Config["mysqlDB"].(*mysqlDB).db
 	}
-	currentNode.Config["mysqlDB"].(*mysqlDB).l.Lock()
-	defer currentNode.Config["mysqlDB"].(*mysqlDB).l.Unlock()
-	db := currentNode.Config["mysqlDB"].(*mysqlDB).db
 
 	tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
 	dbname := currentNode.Config["dbname"].(string)
