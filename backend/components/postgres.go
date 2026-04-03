@@ -25,6 +25,36 @@ type pgDataCol struct {
 	Type string
 }
 
+func validateSQLIdentifier(identifier string) error {
+	if len(identifier) == 0 {
+		return fmt.Errorf("identifier cannot be empty")
+	}
+	if len(identifier) > 63 {
+		return fmt.Errorf("identifier too long (max 63 characters)")
+	}
+	for i, r := range identifier {
+		if i == 0 && !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_') {
+			return fmt.Errorf("identifier must start with letter or underscore: %s", identifier)
+		}
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+			return fmt.Errorf("identifier contains invalid character: %s", identifier)
+		}
+	}
+	return nil
+}
+
+func safeGetString(m map[string]interface{}, key string) (string, error) {
+	val, ok := m[key]
+	if !ok {
+		return "", fmt.Errorf("key '%s' not found in config", key)
+	}
+	str, ok := val.(string)
+	if !ok {
+		return "", fmt.Errorf("key '%s' is not a string type", key)
+	}
+	return str, nil
+}
+
 func postgresInit(currentNode Node) error {
 	postgresDataType := map[string]string{"bigint": "int64", "bigserial": "int64",
 		"boolean": "bool", "bytea": "[]uint8", "date": "time.Time",
@@ -36,11 +66,37 @@ func postgresInit(currentNode Node) error {
 	return nil
 }
 func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
+	host, err := safeGetString(currentNode.Config, "host")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+	port, err := safeGetString(currentNode.Config, "port")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+	user, err := safeGetString(currentNode.Config, "user")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+	password, err := safeGetString(currentNode.Config, "password")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+	dbname, err := safeGetString(currentNode.Config, "dbname")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 	config, err := pgxpool.ParseConfig(psqlconn)
 	if err != nil {
-		log.Infof("数据库配置解析失败，请检查配置：%s", err.Error())
-		return map[string]interface{}{}, nil
+		log.Errorf("数据库配置解析失败，请检查配置：%s", err.Error())
+		return map[string]interface{}{}, err
 	}
 
 	// config.MaxConns = 25                      // 最大连接数
@@ -51,31 +107,56 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
-		log.Infof("数据库创建连接池失败，请检查配置：%s", err.Error())
-		return map[string]interface{}{}, nil
+		log.Errorf("数据库创建连接池失败，请检查配置：%s", err.Error())
+		return map[string]interface{}{}, err
 	}
 	defer pool.Close()
 
 	if err = pool.Ping(context.Background()); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
-		return map[string]interface{}{}, nil
+		log.Errorf("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+		return map[string]interface{}{}, err
 	}
 	tableCols := make([]string, 0)
 	tableQueryStr := ""
-	if len(currentNode.Config["sql"].(string)) == 0 {
-		tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
-		tableQueryStr = fmt.Sprintf("SELECT * FROM %s.%s", currentNode.Config["schema"].(string), tablename)
+	sqlConfig, err := safeGetString(currentNode.Config, "sql")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+	if len(sqlConfig) == 0 {
+		tableConfig, err := safeGetString(currentNode.Config, "table")
+		if err != nil {
+			log.Errorf("配置参数错误: %s", err.Error())
+			return map[string]interface{}{}, err
+		}
+		tablename := loadParameter(tableConfig, currentNode.InputData)
+		if err := validateSQLIdentifier(tablename); err != nil {
+			log.Errorf("表名验证失败: %s", err.Error())
+			return map[string]interface{}{}, err
+		}
+		schema, err := safeGetString(currentNode.Config, "schema")
+		if err != nil {
+			log.Errorf("配置参数错误: %s", err.Error())
+			return map[string]interface{}{}, err
+		}
+		if err := validateSQLIdentifier(schema); err != nil {
+			log.Errorf("schema验证失败: %s", err.Error())
+			return map[string]interface{}{}, err
+		}
+		tableQueryStr = fmt.Sprintf("SELECT * FROM \"%s\".\"%s\"", schema, tablename)
 	} else {
-		tableQueryStr = loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
+		tableQueryStr = loadParameter(sqlConfig, currentNode.InputData)
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 
 	rows, err := pool.Query(ctx, tableQueryStr)
 	if err != nil {
-		log.Infof("数据表检索失败：%s", err.Error())
-		return map[string]interface{}{}, nil
+		log.Errorf("数据表检索失败：%s", err.Error())
+		return map[string]interface{}{}, err
 	}
+	defer rows.Close()
 	columnNames := rows.FieldDescriptions()
 
 	for _, col := range columnNames {
@@ -111,8 +192,8 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 		}
 		err = rows.Scan(recordP...)
 		if err != nil {
-			log.Infof("数据表数据检索失败")
-			return map[string]interface{}{}, nil
+			log.Errorf("数据表数据检索失败: %s", err.Error())
+			return map[string]interface{}{}, err
 		}
 		data := make([]string, 0)
 		data = append(data, strconv.FormatInt(int64(recordNum), 10))
@@ -193,12 +274,38 @@ func postgresReaderMain(currentNode Node, inputData RequestData) (map[string]int
 }
 
 func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
-	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
+	host, err := safeGetString(currentNode.Config, "host")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+	port, err := safeGetString(currentNode.Config, "port")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+	user, err := safeGetString(currentNode.Config, "user")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+	password, err := safeGetString(currentNode.Config, "password")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+	dbname, err := safeGetString(currentNode.Config, "dbname")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 
 	config, err := pgxpool.ParseConfig(psqlconn)
 	if err != nil {
-		log.Infof("数据库配置解析失败，请检查配置：%s", err.Error())
-		return map[string]interface{}{}, nil
+		log.Errorf("数据库配置解析失败，请检查配置：%s", err.Error())
+		return map[string]interface{}{}, err
 	}
 
 	// config.MaxConns = 25                      // 最大连接数
@@ -209,22 +316,27 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
-		log.Infof("数据库创建连接池失败，请检查配置：%s", err.Error())
-		return map[string]interface{}{}, nil
+		log.Errorf("数据库创建连接池失败，请检查配置：%s", err.Error())
+		return map[string]interface{}{}, err
 	}
 	defer pool.Close()
 	if err = pool.Ping(context.Background()); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
-		return map[string]interface{}{}, nil
+		log.Errorf("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+		return map[string]interface{}{}, err
 	}
-	tableQueryStr := loadParameter(currentNode.Config["sql"].(string), currentNode.InputData)
+	sqlConfig, err := safeGetString(currentNode.Config, "sql")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return map[string]interface{}{}, err
+	}
+	tableQueryStr := loadParameter(sqlConfig, currentNode.InputData)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-    defer cancel()
+	defer cancel()
 	queryTime := time.Now()
 	_, err = pool.Exec(ctx, tableQueryStr)
 	if err != nil {
-		log.Infof("%s 数据库执行sql语句失败, 原因: %s", currentNode.Id, err.Error())
-		return map[string]interface{}{}, nil
+		log.Errorf("%s 数据库执行sql语句失败, 原因: %s", currentNode.Id, err.Error())
+		return map[string]interface{}{}, err
 	}
 	log.Infof("当前节点 %s 执行sql语句成功, 耗时: %dms", currentNode.Id, time.Since(queryTime).Milliseconds())
 	return map[string]interface{}{"out1": "success"}, nil
@@ -232,15 +344,34 @@ func postgresExecutorMain(currentNode Node, inputData RequestData) (map[string]i
 
 func postgresWriterMain(currentNode Node, inputData RequestData) (map[string]interface{}, error) {
 	args := config.GetArgs()
-	tmpPath := currentNode.InputData["in1"].(string)
+	in1, ok := currentNode.InputData["in1"]
+	if !ok {
+		log.Errorf("InputData中缺少'in1'字段")
+		return map[string]interface{}{}, fmt.Errorf("missing 'in1' in InputData")
+	}
+	tmpPath, ok := in1.(string)
+	if !ok {
+		log.Errorf("InputData['in1']不是string类型")
+		return map[string]interface{}{}, fmt.Errorf("'in1' is not a string type")
+	}
 	if _, err := os.Stat(tmpPath); errors.Is(err, os.ErrNotExist) {
-		tmpPath = path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], currentNode.InputData["in1"].(string), currentNode.Id, "data.csv")
-		tmpKey := path.Join(currentNode.InputData["in1"].(string), "data.csv")
+		storageType, ok := args["--storage-type"]
+		if !ok {
+			log.Errorf("args中缺少'--storage-type'字段")
+			return map[string]interface{}{}, fmt.Errorf("missing '--storage-type' in args")
+		}
+		tempStore, ok := args[fmt.Sprintf("--storage-%s-temp-store", storageType)]
+		if !ok {
+			log.Errorf("args中缺少temp-store配置")
+			return map[string]interface{}{}, fmt.Errorf("missing temp-store config in args")
+		}
+		tmpPath = path.Join(tempStore, tmpPath, currentNode.Id, "data.csv")
+		tmpKey := path.Join(tmpPath, "data.csv")
 		os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
 		storageErr := storage.FGetObject(tmpKey, tmpPath)
 		if storageErr != nil {
 			log.Errorf("Can not download file: %s, with error: %s", tmpKey, storageErr.Error())
-			return map[string]interface{}{}, nil
+			return map[string]interface{}{}, storageErr
 		}
 	}
 	csvFile, err := os.Open(tmpPath)
@@ -283,10 +414,14 @@ func readBatch(csvReader *csv.Reader, batch int) ([][]string, error) {
 }
 
 func ReadCsvToSql(r io.Reader, currentNode Node) error {
-	chunksizeRaw := currentNode.Config["chunksize"].(string)
+	chunksizeRaw, err := safeGetString(currentNode.Config, "chunksize")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return err
+	}
 	chunksize, err := strconv.Atoi(chunksizeRaw)
 	if err != nil {
-		log.Infof("chunksize设置非数值")
+		log.Errorf("chunksize设置非数值")
 		return err
 	}
 	csvReader := csv.NewReader(r)
@@ -294,11 +429,37 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 	if err != nil {
 		return err
 	}
-	//链接数据库
-	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", currentNode.Config["host"].(string), currentNode.Config["port"].(string), currentNode.Config["user"].(string), currentNode.Config["password"].(string), currentNode.Config["dbname"].(string))
+
+	host, err := safeGetString(currentNode.Config, "host")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return err
+	}
+	port, err := safeGetString(currentNode.Config, "port")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return err
+	}
+	user, err := safeGetString(currentNode.Config, "user")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return err
+	}
+	password, err := safeGetString(currentNode.Config, "password")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return err
+	}
+	dbname, err := safeGetString(currentNode.Config, "dbname")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return err
+	}
+
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 	config, err := pgxpool.ParseConfig(psqlconn)
 	if err != nil {
-		log.Infof("数据库配置解析失败，请检查配置：%s", err.Error())
+		log.Errorf("数据库配置解析失败，请检查配置：%s", err.Error())
 		return err
 	}
 
@@ -310,44 +471,66 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
-		log.Infof("数据库创建连接池失败，请检查配置：%s", err.Error())
+		log.Errorf("数据库创建连接池失败，请检查配置：%s", err.Error())
 		return err
 	}
 	defer pool.Close()
 	if err = pool.Ping(context.Background()); err != nil {
-		log.Infof("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
+		log.Errorf("数据库测试连接失败，请检查配置, 具体原因为: %s", err.Error())
 		return err
 	}
 
-	tablename := loadParameter(currentNode.Config["table"].(string), currentNode.InputData)
-	schema := currentNode.Config["databaseChoose"].(string)
-	mode := currentNode.Config["mode"].(string)
+	tableConfig, err := safeGetString(currentNode.Config, "table")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return err
+	}
+	tablename := loadParameter(tableConfig, currentNode.InputData)
+	if err := validateSQLIdentifier(tablename); err != nil {
+		log.Errorf("表名验证失败: %s", err.Error())
+		return err
+	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Minute)
+	schema, err := safeGetString(currentNode.Config, "databaseChoose")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return err
+	}
+	if err := validateSQLIdentifier(schema); err != nil {
+		log.Errorf("schema验证失败: %s", err.Error())
+		return err
+	}
+
+	mode, err := safeGetString(currentNode.Config, "mode")
+	if err != nil {
+		log.Errorf("配置参数错误: %s", err.Error())
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	if strings.Compare(mode, "replace") == 0 {
-		//新建表
 		tableSchemaArr := make([]string, 0)
 		for i := 1; i < len(columns); i++ {
-			tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar")
-
+			colName := strings.ReplaceAll(columns[i], "\"", "\"\"")
+			tableSchemaArr = append(tableSchemaArr, fmt.Sprintf("\"%s\" varchar", colName))
 		}
 		tableSchemaStr := strings.Join(tableSchemaArr, ",")
-		tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableSchemaStr)
-		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
+		tableCreateStr := fmt.Sprintf("CREATE TABLE \"%s\".\"%s\" (%s);", schema, tablename, tableSchemaStr)
+		tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS \"%s\".\"%s\"", schema, tablename)
 
 		dropTime := time.Now()
 		_, err := pool.Exec(ctx, tableDropStr)
 		if err != nil {
-			log.Infof("删除原表失败, 原因: %s", err.Error())
+			log.Errorf("删除原表失败, 原因: %s", err.Error())
 			return err
 		}
 		log.Infof("当前节点%s删除原表成功, 耗时: %dms", currentNode.Id, time.Since(dropTime).Milliseconds())
-		
+
 		createTime := time.Now()
 		_, err = pool.Exec(ctx, tableCreateStr)
 		if err != nil {
-			log.Infof("创建表失败, 原因: %s", err.Error())
+			log.Errorf("创建表失败, 原因: %s", err.Error())
 			return err
 		}
 		log.Infof("当前节点%s创建表成功, 耗时: %dms", currentNode.Id, time.Since(createTime).Milliseconds())
@@ -357,7 +540,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			log.Infof("当前节点%s写入数据库接受到数据%d条", currentNode.Id, len(records))
 			log.Debugf("写入数据 %v", records)
 			if err != nil && err != io.EOF {
-				log.Infof("读取csv文件失败")
+				log.Errorf("读取csv文件失败: %s", err.Error())
 				return err
 			}
 			var tableInsertValues string
@@ -378,15 +561,15 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			if len(tableInsertArr) > 0 {
 				tableInsertValues = strings.Join(tableInsertArr, ",")
 				tableColumns := make([]string, 0)
-				for i := 1; i < len(columns); i++ {
-					tableColumns = append(tableColumns, "\""+string(columns[i])+"\"")
-
-				}
-				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(tableColumns, ","), tableInsertValues)
+			for i := 1; i < len(columns); i++ {
+				colName := strings.ReplaceAll(columns[i], "\"", "\"\"")
+				tableColumns = append(tableColumns, fmt.Sprintf("\"%s\"", colName))
+			}
+			tableInsertStr := fmt.Sprintf("INSERT INTO \"%s\".\"%s\" (%s) VALUES %s;", schema, tablename, strings.Join(tableColumns, ","), tableInsertValues)
 				insertStart := time.Now()
 				_, err := pool.Exec(ctx, tableInsertStr)
 				if err != nil {
-					log.Infof("覆盖写入表失败, 原因: %s", err.Error())
+					log.Errorf("覆盖写入表失败, 原因: %s", err.Error())
 					return err
 				}
 				log.Infof("当前节点%s写入%d条数据库成功, 耗时: %dms", currentNode.Id, len(tableInsertArr), time.Since(insertStart).Milliseconds())
@@ -397,11 +580,10 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		}
 
 	} else {
-		//判断表是否存在并获取表头信息
-		tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
-		colRows, err := pool.Query(ctx, tableColumnStr)
+		tableColumnStr := fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = $1 and table_schema = $2;")
+		colRows, err := pool.Query(ctx, tableColumnStr, tablename, schema)
 		if err != nil {
-			log.Infof("数据表检索失败, 请确认要写入的表是否存在")
+			log.Errorf("数据表检索失败, 请确认要写入的表是否存在: %s", err.Error())
 			return err
 		}
 		tableCols := make([]pgDataCol, 0)
@@ -417,36 +599,35 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		}
 		if len(tableCols) == 0 {
 			log.Infof("数据表检索失败, 开始自动创建数据表")
-			//新建表
 			tableSchemaArr := make([]string, 0)
 			for i := 1; i < len(columns); i++ {
-				tableSchemaArr = append(tableSchemaArr, "\""+string(columns[i])+"\""+" "+"varchar")
-
+				colName := strings.ReplaceAll(columns[i], "\"", "\"\"")
+				tableSchemaArr = append(tableSchemaArr, fmt.Sprintf("\"%s\" varchar", colName))
 			}
 			tableSchemaStr := strings.Join(tableSchemaArr, ",")
-			tableCreateStr := fmt.Sprintf("Create Table %s.%s (%s);", schema, tablename, tableSchemaStr)
-			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", schema, tablename)
+			tableCreateStr := fmt.Sprintf("CREATE TABLE \"%s\".\"%s\" (%s);", schema, tablename, tableSchemaStr)
+			tableDropStr := fmt.Sprintf("DROP TABLE IF EXISTS \"%s\".\"%s\"", schema, tablename)
 			dropTime := time.Now()
 			_, err := pool.Exec(ctx, tableDropStr)
 			if err != nil {
-				log.Infof("删除原表失败, 原因: %s", err.Error())
+				log.Errorf("删除原表失败, 原因: %s", err.Error())
 				return err
 			}
 			log.Infof("当前节点%s删除原表成功, 耗时: %dms", currentNode.Id, time.Since(dropTime).Milliseconds())
 			createTime := time.Now()
 			_, err = pool.Exec(ctx, tableCreateStr)
 			if err != nil {
-				log.Infof("创建表失败, 原因: %s", err.Error())
+				log.Errorf("创建表失败, 原因: %s", err.Error())
 				return err
 			}
 			log.Infof("当前节点%s创建表成功, 耗时: %dms", currentNode.Id, time.Since(createTime).Milliseconds())
-			tableColumnStr = fmt.Sprintf("SELECT column_name,data_type FROM information_schema.columns WHERE table_name = '%s' and table_schema = '%s';", tablename, schema)
-			colRows, err := pool.Query(ctx, tableColumnStr)
+			colRows.Close()
+			tableColumnStr := "SELECT column_name,data_type FROM information_schema.columns WHERE table_name = $1 and table_schema = $2;"
+			colRows, err = pool.Query(ctx, tableColumnStr, tablename, schema)
 			if err != nil {
-				log.Infof("数据表检索失败, 请确认要写入的表是否存在, 原因: %s", err.Error())
+				log.Errorf("数据表检索失败, 请确认要写入的表是否存在, 原因: %s", err.Error())
 				return err
 			}
-			defer colRows.Close()
 			for colRows.Next() {
 				var tableCol pgDataCol
 				err = colRows.Scan(&tableCol.Name, &tableCol.Type)
@@ -478,10 +659,10 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 		if strings.Compare(mode, "clearAndAppend") == 0 {
 			log.Infof("开始清空并追加")
 			clearStart := time.Now()
-			tableClearStr := fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, tablename)
+			tableClearStr := fmt.Sprintf("TRUNCATE TABLE \"%s\".\"%s\"", schema, tablename)
 			_, err := pool.Exec(ctx, tableClearStr)
 			if err != nil {
-				log.Infof("清空表失败, 原因: %s", err.Error())
+				log.Errorf("清空表失败, 原因: %s", err.Error())
 				return err
 			}
 			log.Infof("当前节点%s清空表成功, 耗时: %dms", currentNode.Id, time.Since(clearStart).Milliseconds())
@@ -491,7 +672,7 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			log.Infof("当前节点%s写入数据库接受到数据%d条", currentNode.Id, len(records))
 			log.Debugf("写入数据 %v", records)
 			if err != nil && err != io.EOF {
-				log.Infof("读取csv文件失败")
+				log.Errorf("读取csv文件失败: %s", err.Error())
 				return err
 			}
 			var tableInsertValues string
@@ -520,10 +701,10 @@ func ReadCsvToSql(r io.Reader, currentNode Node) error {
 			if len(tableInsertArr) > 0 {
 				insertStart := time.Now()
 				tableInsertValues = strings.Join(tableInsertArr, ",")
-				tableInsertStr := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
+				tableInsertStr := fmt.Sprintf("INSERT INTO \"%s\".\"%s\" (%s) VALUES %s;", schema, tablename, strings.Join(headers, ","), tableInsertValues)
 				_, err := pool.Exec(ctx, tableInsertStr)
 				if err != nil {
-					log.Infof("追加写入表失败\n执行SQL为：%s\n具体报错为：%s", tableInsertStr, err.Error())
+					log.Errorf("追加写入表失败\n执行SQL为：%s\n具体报错为：%s", tableInsertStr, err.Error())
 					return err
 				}
 				log.Infof("当前节点%s写入%d条数据库成功, 耗时: %dms", currentNode.Id, len(tableInsertArr), time.Since(insertStart).Milliseconds())
