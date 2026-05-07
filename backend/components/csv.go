@@ -7,6 +7,8 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
+
 	"github.com/go-gota/gota/dataframe"
 	"github.com/xuelang-group/suanpan-go-sdk/config"
 	"github.com/xuelang-group/suanpan-go-sdk/suanpan/v1/log"
@@ -21,7 +23,9 @@ func csvDownloaderMain(currentNode Node, inputData RequestData) (map[string]inte
 	tmpPath := path.Join(args[fmt.Sprintf("--storage-%s-temp-store", args["--storage-type"])], "tmp", currentNode.Id, "input", strconv.Itoa(pathId), "data.csv")
 	tmpKey := currentNode.InputData["in1"].(string)
 	if needBasename {
-		tmpKey = path.Join(currentNode.InputData["in1"].(string), "data.csv")
+		if !strings.HasSuffix(strings.ToLower(tmpKey), ".csv") {
+			tmpKey = path.Join(tmpKey, "data.csv")
+		}
 	}
 	os.MkdirAll(filepath.Dir(tmpPath), os.ModePerm)
 	storageErr := storage.FGetObject(tmpKey, tmpPath)
